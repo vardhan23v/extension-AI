@@ -54,7 +54,12 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✓ Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 5050;
+
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`✓ Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
