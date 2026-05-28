@@ -1,7 +1,6 @@
 import React from 'react';
 import { Menu, LogOut, Code2, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
