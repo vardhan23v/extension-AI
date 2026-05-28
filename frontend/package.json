@@ -23,6 +23,10 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.16",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.31",
     "vite": "^4.4.9"
   }
