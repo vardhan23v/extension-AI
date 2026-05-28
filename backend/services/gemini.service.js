@@ -2,14 +2,34 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const generateExtensionFiles = async (userPrompt) => {
-  try {
-    const model = gemini.getGenerativeModel(
-      { model: 'gemini-2.0-flash' },
-      { apiVersion: 'v1beta' }
-    );
+const parseAIResponse = (text) => {
+  // Strip markdown code fence if present
+  let jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-    const systemPrompt = `You are an expert Chrome Extension developer. 
+  let parsedResponse;
+  try {
+    parsedResponse = JSON.parse(jsonText);
+  } catch (parseError) {
+    console.error('Failed to parse AI response:', jsonText);
+    throw new Error('AI output was not valid JSON. Please try again.');
+  }
+
+  if (!parsedResponse.title || !Array.isArray(parsedResponse.files)) {
+    throw new Error('Invalid response structure from AI.');
+  }
+
+  if (parsedResponse.files.length === 0) {
+    throw new Error('No files generated. Please try a more detailed description.');
+  }
+
+  return {
+    title: parsedResponse.title,
+    files: parsedResponse.files,
+  };
+};
+
+const generateExtensionFiles = async (userPrompt) => {
+  const systemPrompt = `You are an expert Chrome Extension developer. 
 The user will describe a Chrome extension in plain English.
 Your job is to generate ALL necessary files for a working Chrome Extension (Manifest V3).
 
@@ -30,6 +50,12 @@ STRICT RULES:
 5. Do NOT include any file that is not needed.
 6. Never explain anything. Output JSON only.`;
 
+  try {
+    const model = gemini.getGenerativeModel(
+      { model: 'gemini-2.0-flash' },
+      { apiVersion: 'v1beta' }
+    );
+
     const response = await model.generateContent({
       contents: [
         {
@@ -39,35 +65,45 @@ STRICT RULES:
       ],
     });
 
-    let jsonText = response.response.text();
-
-    // Strip markdown code fence if present
-    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    // Parse JSON safely
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(jsonText);
-    } catch (parseError) {
-      console.error('Failed to parse Gemini response:', jsonText);
-      throw new Error('AI output was not valid JSON. Please try again.');
-    }
-
-    if (!parsedResponse.title || !Array.isArray(parsedResponse.files)) {
-      throw new Error('Invalid response structure from AI.');
-    }
-
-    if (parsedResponse.files.length === 0) {
-      throw new Error('No files generated. Please try a more detailed description.');
-    }
-
-    return {
-      title: parsedResponse.title,
-      files: parsedResponse.files,
-    };
+    return parseAIResponse(response.response.text());
   } catch (error) {
     console.error('Gemini Service Error:', error.message);
-    throw error;
+    console.log('Attempting fallback to OpenRouter...');
+
+    try {
+      const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'qwen/qwen-2.5-coder-32b-instruct:free',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      const data = await openRouterResponse.json();
+      
+      if (!openRouterResponse.ok) {
+        throw new Error(data.error?.message || 'OpenRouter API failed');
+      }
+
+      const content = data.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No content received from OpenRouter');
+      }
+
+      return parseAIResponse(content);
+    } catch (fallbackError) {
+      console.error('Fallback OpenRouter Error:', fallbackError.message);
+      // Throw original error so frontend sees the original Gemini issue if fallback fails
+      throw error;
+    }
   }
 };
 
