@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 * {
   font-family: 'Inter', sans-serif;
@@ -61,4 +61,12 @@ select {
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
+}
+
+/* Glassmorphism Utilities */
+.glass-card {
+  @apply bg-gradient-glass backdrop-blur-md border border-glass-border shadow-xl;
+}
+.glass-panel {
+  @apply bg-gray-900/60 backdrop-blur-lg border border-gray-800/50;
 }

@@ -78,7 +78,7 @@ STRICT RULES:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'qwen/qwen-2.5-coder-32b-instruct:free',
+          model: 'qwen/qwen3-coder:free',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
@@ -88,6 +88,7 @@ STRICT RULES:
       });
 
       const data = await openRouterResponse.json();
+      console.log('OpenRouter Response Data:', JSON.stringify(data, null, 2));
       
       if (!openRouterResponse.ok) {
         throw new Error(data.error?.message || 'OpenRouter API failed');

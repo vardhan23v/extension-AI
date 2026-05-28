@@ -1,11 +1,13 @@
 import React from 'react';
-import { Menu, LogOut, Code2 } from 'lucide-react';
+import { Menu, LogOut, Code2, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const handleLogout = () => {
@@ -19,29 +21,40 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   };
 
+  const isActive = (path) => location.pathname === path;
+
   return (
-    <nav className="bg-gray-950 border-b border-gray-800 sticky top-0 z-50">
+    <nav className="glass-panel sticky top-0 z-50 border-b border-gray-800/50 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleNavigate('/')}>
-            <Code2 className="w-6 h-6 text-purple-main" />
-            <span className="font-bold text-lg text-white">Extensio.ai</span>
-          </div>
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 cursor-pointer" 
+            onClick={() => handleNavigate('/')}
+          >
+            <div className="bg-purple-main/20 p-1.5 rounded-lg border border-purple-main/30">
+              <Code2 className="w-6 h-6 text-purple-main" />
+            </div>
+            <span className="font-extrabold text-xl text-transparent bg-clip-text bg-gradient-main tracking-tight">
+              Extensio.ai
+            </span>
+          </motion.div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-8">
             {isAuthenticated && (
               <>
                 <button
                   onClick={() => handleNavigate('/generate')}
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className={`flex items-center gap-2 transition-colors font-medium ${isActive('/generate') ? 'text-purple-400' : 'text-gray-400 hover:text-white'}`}
                 >
-                  Generate
+                  <Sparkles className="w-4 h-4" /> Generate
                 </button>
                 <button
                   onClick={() => handleNavigate('/dashboard')}
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className={`transition-colors font-medium ${isActive('/dashboard') ? 'text-purple-400' : 'text-gray-400 hover:text-white'}`}
                 >
                   Dashboard
                 </button>
@@ -53,29 +66,35 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated ? (
               <>
-                <span className="text-gray-400 text-sm">{user?.email}</span>
-                <button
+                <div className="px-3 py-1.5 bg-gray-800/50 rounded-full border border-gray-700/50 text-gray-300 text-sm font-medium">
+                  {user?.email}
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition-colors font-medium"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout
-                </button>
+                </motion.button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => handleNavigate('/login')}
-                  className="text-gray-300 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors font-medium"
                 >
                   Login
                 </button>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigate('/register')}
-                  className="px-4 py-2 bg-gradient-main text-white rounded-lg hover:opacity-90 transition-opacity"
+                  className="px-5 py-2.5 bg-gradient-main text-white rounded-xl hover:opacity-90 transition-opacity font-bold shadow-lg shadow-purple-900/20"
                 >
                   Sign Up
-                </button>
+                </motion.button>
               </>
             )}
           </div>
@@ -83,42 +102,70 @@ const Navbar = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-gray-300 hover:text-white"
+            className="md:hidden text-gray-300 hover:text-white p-2 rounded-lg bg-gray-800/50 border border-gray-700/50"
           >
             <Menu className="w-6 h-6" />
           </button>
         </div>
 
         {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-4 border-t border-gray-800">
-            {isAuthenticated && (
-              <>
-                <button
-                  onClick={() => handleNavigate('/generate')}
-                  className="block w-full text-left px-4 py-2 text-gray-300 hover:text-white"
-                >
-                  Generate
-                </button>
-                <button
-                  onClick={() => handleNavigate('/dashboard')}
-                  className="block w-full text-left px-4 py-2 text-gray-300 hover:text-white"
-                >
-                  Dashboard
-                </button>
-              </>
-            )}
-            <div className="px-4 py-2 text-gray-400 text-sm">
-              {user?.email}
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-4 py-2 text-red-400 hover:text-red-300"
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden overflow-hidden"
             >
-              Logout
-            </button>
-          </div>
-        )}
+              <div className="pb-4 pt-2 border-t border-gray-800/50 space-y-2 mt-2">
+                {isAuthenticated && (
+                  <>
+                    <button
+                      onClick={() => handleNavigate('/generate')}
+                      className={`block w-full text-left px-4 py-3 rounded-lg ${isActive('/generate') ? 'bg-purple-main/10 text-purple-400' : 'text-gray-300 hover:bg-gray-800/50'}`}
+                    >
+                      Generate
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('/dashboard')}
+                      className={`block w-full text-left px-4 py-3 rounded-lg ${isActive('/dashboard') ? 'bg-purple-main/10 text-purple-400' : 'text-gray-300 hover:bg-gray-800/50'}`}
+                    >
+                      Dashboard
+                    </button>
+                  </>
+                )}
+                {isAuthenticated ? (
+                  <>
+                    <div className="px-4 py-3 text-gray-400 text-sm border-t border-gray-800/50 mt-2">
+                      Logged in as {user?.email}
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" /> Logout
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2 p-2">
+                    <button
+                      onClick={() => handleNavigate('/login')}
+                      className="w-full py-3 bg-gray-800 text-white rounded-lg"
+                    >
+                      Login
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('/register')}
+                      className="w-full py-3 bg-gradient-main text-white rounded-lg"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );

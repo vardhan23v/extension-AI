@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import ExtensionCard from '../components/ExtensionCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Search, Trash2 } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -46,7 +47,6 @@ const DashboardPage = () => {
   };
 
   const handleIterate = (extensionId) => {
-    // Store the extension ID to load in generator
     localStorage.setItem('iterateExtensionId', extensionId);
     navigate('/generate');
   };
@@ -68,69 +68,117 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <LoadingSpinner message="Loading your extensions..." />
-        </div>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="min-h-screen bg-gray-950 py-8 flex items-center justify-center"
+      >
+        <LoadingSpinner message="Loading your extensions..." />
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-4">My Extensions</h1>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen bg-gray-950 py-8 relative overflow-hidden"
+    >
+      <div className="absolute top-[10%] right-[10%] w-[40%] h-[40%] bg-purple-main/10 blur-[120px] rounded-full pointer-events-none" />
 
-          {error && (
-            <div className="mb-4 bg-red-900/20 border border-red-900 text-red-400 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+        >
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-main">
+            My Extensions
+          </h1>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/generate')}
+            className="flex items-center gap-2 px-6 py-2.5 bg-purple-main/20 border border-purple-main/50 text-purple-300 rounded-xl hover:bg-purple-main hover:text-white transition-all font-medium"
+          >
+            <Plus className="w-5 h-5" /> New Extension
+          </motion.button>
+        </motion.div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search extensions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-main pl-10 pr-4 py-2"
-            />
+        {error && (
+          <div className="mb-4 bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-xl backdrop-blur-sm">
+            {error}
           </div>
+        )}
+
+        <div className="mb-10 relative">
+          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search your generated extensions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full glass-panel border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-main pl-12 pr-4 py-3 transition-all"
+          />
         </div>
 
         {filteredExtensions.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
-            <p className="text-gray-400 mb-6">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="glass-card rounded-3xl p-16 text-center border-dashed border-2 border-gray-700/50"
+          >
+            <p className="text-gray-400 mb-6 text-lg">
               {searchQuery
                 ? 'No extensions found matching your search.'
-                : 'No extensions yet — go build one!'}
+                : 'No extensions yet — go build your first one!'}
             </p>
             {!searchQuery && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('/generate')}
-                className="px-6 py-2 bg-gradient-main text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+                className="px-8 py-3 bg-gradient-main text-white rounded-xl font-bold shadow-lg shadow-purple-900/40"
               >
                 Create Your First Extension
-              </button>
+              </motion.button>
             )}
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredExtensions.map((extension) => (
-              <ExtensionCard
-                key={extension.id}
-                extension={extension}
-                onDownload={handleDownload}
-                onIterate={handleIterate}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            <AnimatePresence>
+              {filteredExtensions.map((extension) => (
+                <motion.div
+                  key={extension.id}
+                  variants={{
+                    hidden: { y: 20, opacity: 0 },
+                    visible: { y: 0, opacity: 1 }
+                  }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <ExtensionCard
+                    extension={extension}
+                    onDownload={handleDownload}
+                    onIterate={handleIterate}
+                    onDelete={handleDelete}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
