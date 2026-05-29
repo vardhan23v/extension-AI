@@ -67,10 +67,40 @@ STRICT RULES:
 
     return parseAIResponse(response.response.text());
   } catch (error) {
-    console.error('Gemini Service Error:', error.message);
-    console.log('Attempting fallback to OpenRouter...');
-
+    console.error('Gemini Service Error:', error.message);    // Try Groq first as a free fallback
     try {
+      if (process.env.GROQ_API_KEY) {
+        console.log('Attempting fallback to Groq...');
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama3-70b-8192',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            response_format: { type: "json_object" }
+          })
+        });
+
+        const groqData = await groqResponse.json();
+        if (groqResponse.ok && groqData.choices && groqData.choices[0]) {
+          const content = groqData.choices[0].message.content;
+          return parseAIResponse(content);
+        }
+        console.log('Groq fallback failed, moving to OpenRouter. Error:', groqData.error?.message);
+      }
+    } catch (groqError) {
+      console.error('Groq Error:', groqError.message);
+    }
+
+    // Try OpenRouter as final fallback
+    try {
+      console.log('Attempting fallback to OpenRouter...');
       const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -88,17 +118,12 @@ STRICT RULES:
       });
 
       const data = await openRouterResponse.json();
-      console.log('OpenRouter Response Data:', JSON.stringify(data, null, 2));
       
-      if (!openRouterResponse.ok) {
+      if (!openRouterResponse.ok || data.error) {
         throw new Error(data.error?.message || 'OpenRouter API failed');
       }
 
-      const content = data.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No content received from OpenRouter');
-      }
-
+      const content = data.choices[0].message.content;
       return parseAIResponse(content);
     } catch (fallbackError) {
       console.error('Fallback OpenRouter Error:', fallbackError.message);
@@ -106,7 +131,7 @@ STRICT RULES:
       // Clean up the error message for the frontend
       const originalError = error.message.toLowerCase();
       if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
-        throw new Error('API Rate Limit Exceeded. Both Gemini and OpenRouter free tiers are currently overloaded. Please wait a minute and try again, or add your own API key in the backend.');
+        throw new Error('API Rate Limit Exceeded. Your Gemini API Key has 0 quota (likely due to your region). Please add a free GROQ_API_KEY to your backend (.env file) to continue!');
       }
       
       // Throw original error so frontend sees the original Gemini issue if fallback fails
