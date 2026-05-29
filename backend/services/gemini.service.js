@@ -78,7 +78,7 @@ STRICT RULES:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'qwen/qwen3-coder:free',
+          model: 'google/gemma-4-31b-it:free',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
