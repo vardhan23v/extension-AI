@@ -102,8 +102,15 @@ STRICT RULES:
       return parseAIResponse(content);
     } catch (fallbackError) {
       console.error('Fallback OpenRouter Error:', fallbackError.message);
+      
+      // Clean up the error message for the frontend
+      const originalError = error.message.toLowerCase();
+      if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
+        throw new Error('API Rate Limit Exceeded. Both Gemini and OpenRouter free tiers are currently overloaded. Please wait a minute and try again, or add your own API key in the backend.');
+      }
+      
       // Throw original error so frontend sees the original Gemini issue if fallback fails
-      throw error;
+      throw new Error('AI Generation Failed: ' + (error.message.split('Please retry')[0] || 'Unknown error occurred.'));
     }
   }
 };
