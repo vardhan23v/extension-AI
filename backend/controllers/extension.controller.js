@@ -8,7 +8,7 @@ const path = require('path');
 
 const generateExtension = async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, monetizationLink } = req.body;
     const userId = req.user.userId;
 
     if (!prompt || prompt.trim().length === 0) {
@@ -18,7 +18,7 @@ const generateExtension = async (req, res) => {
     // Call Gemini AI
     let aiResponse;
     try {
-      aiResponse = await generateExtensionFiles(prompt);
+      aiResponse = await generateExtensionFiles(prompt, monetizationLink);
     } catch (aiError) {
       return res.status(400).json({ message: aiError.message });
     }
@@ -40,6 +40,11 @@ const generateExtension = async (req, res) => {
       return res.status(500).json({ message: 'Failed to create zip file', error: zipError.message });
     }
 
+    // Generate Store Assets URLs using Pollinations.ai (free, open API)
+    const encodedTitle = encodeURIComponent(aiResponse.title);
+    const logoUrl = `https://image.pollinations.ai/prompt/Flat%20minimalist%20logo%20for%20chrome%20extension%20called%20${encodedTitle}?width=128&height=128&nologo=true`;
+    const bannerUrl = `https://image.pollinations.ai/prompt/Promo%20banner%20for%20chrome%20extension%20${encodedTitle}%20modern%20tech%20background?width=440&height=280&nologo=true`;
+
     // Save to MongoDB
     const extension = new Extension({
       userId,
@@ -47,6 +52,12 @@ const generateExtension = async (req, res) => {
       prompt,
       files: sanitizedFiles,
       zipPath,
+      monetizationLink: monetizationLink || null,
+      storeAssets: {
+        logoUrl,
+        bannerUrl,
+        description: aiResponse.storeDescription || 'A powerful Chrome Extension.'
+      },
       iterationHistory: [{ prompt, timestamp: new Date() }],
     });
 
@@ -57,10 +68,12 @@ const generateExtension = async (req, res) => {
       extension: {
         id: extension._id,
         title: extension.title,
+        storeAssets: extension.storeAssets,
         files: sanitizedFiles.map((f) => ({
           filename: f.filename,
           content: f.content,
         })),
+        iterationHistory: extension.iterationHistory,
         createdAt: extension.createdAt,
       },
     });
@@ -162,10 +175,12 @@ const iterateExtension = async (req, res) => {
       extension: {
         id: extension._id,
         title: extension.title,
+        storeAssets: extension.storeAssets,
         files: sanitizedFiles.map((f) => ({
           filename: f.filename,
           content: f.content,
         })),
+        iterationHistory: extension.iterationHistory,
         updatedAt: extension.updatedAt,
       },
     });
@@ -229,10 +244,167 @@ const deleteExtension = async (req, res) => {
   }
 };
 
+const getPublicGallery = async (req, res) => {
+  try {
+    const extensions = await Extension.find({ isPublic: true })
+      .sort({ upvotes: -1, createdAt: -1 })
+      .populate('userId', 'username')
+      .limit(50);
+
+    res.status(200).json({
+      success: true,
+      extensions: extensions.map(ext => ({
+        id: ext._id,
+        title: ext.title,
+        prompt: ext.prompt,
+        storeAssets: ext.storeAssets,
+        upvotes: ext.upvotes,
+        cloneCount: ext.cloneCount,
+        createdAt: ext.createdAt,
+      }))
+    });
+  } catch (error) {
+    console.error('Gallery error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const togglePublish = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const extension = await Extension.findById(id);
+    if (!extension || extension.userId.toString() !== userId) {
+      return res.status(404).json({ message: 'Extension not found' });
+    }
+
+    extension.isPublic = !extension.isPublic;
+    await extension.save();
+
+    res.status(200).json({ success: true, isPublic: extension.isPublic });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const upvoteExtension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const extension = await Extension.findById(id);
+    if (!extension || !extension.isPublic) {
+      return res.status(404).json({ message: 'Extension not found' });
+    }
+
+    extension.upvotes += 1;
+    await extension.save();
+
+    res.status(200).json({ success: true, upvotes: extension.upvotes });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const cloneExtension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const sourceExtension = await Extension.findById(id);
+    if (!sourceExtension || !sourceExtension.isPublic) {
+      return res.status(404).json({ message: 'Extension not found' });
+    }
+
+    // Increment clone count on source
+    sourceExtension.cloneCount += 1;
+    await sourceExtension.save();
+
+    // Create a deep copy of files for the new zip
+    const newFiles = sourceExtension.files.map(f => ({
+      filename: f.filename,
+      content: f.content
+    }));
+
+    const extensionId = uuidv4();
+    const zipPath = await createZip(extensionId, newFiles);
+
+    const clonedExtension = new Extension({
+      userId,
+      title: sourceExtension.title + ' (Clone)',
+      prompt: sourceExtension.prompt,
+      files: newFiles,
+      zipPath,
+      monetizationLink: sourceExtension.monetizationLink,
+      storeAssets: sourceExtension.storeAssets,
+      iterationHistory: [{ prompt: 'Cloned from Gallery', timestamp: new Date() }],
+    });
+
+    await clonedExtension.save();
+
+    res.status(201).json({ success: true, extensionId: clonedExtension._id });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const debugExtension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { errorMessage } = req.body;
+    const userId = req.user.userId;
+
+    if (!errorMessage || errorMessage.trim().length === 0) {
+      return res.status(400).json({ message: 'Please provide the error message' });
+    }
+
+    const extension = await Extension.findById(id);
+    if (!extension || extension.userId.toString() !== userId) {
+      return res.status(404).json({ message: 'Extension not found' });
+    }
+
+    // Pass the existing code + error to the AI
+    const combinedPrompt = `Original prompt: "${extension.prompt}". 
+The generated code threw this error: "${errorMessage}". 
+Please fix the code files to resolve this error.`;
+
+    let aiResponse = await generateExtensionFiles(combinedPrompt, extension.monetizationLink);
+    let sanitizedFiles = sanitizeFiles(aiResponse.files);
+    
+    const newZipPath = await createZip(id, sanitizedFiles);
+
+    if (extension.zipPath && fs.existsSync(extension.zipPath)) cleanupZip(extension.zipPath);
+
+    extension.title = aiResponse.title;
+    extension.files = sanitizedFiles;
+    extension.zipPath = newZipPath;
+    extension.iterationHistory.push({ prompt: 'DEBUG: ' + errorMessage, timestamp: new Date() });
+    
+    await extension.save();
+
+    res.status(200).json({
+      success: true,
+      extension: {
+        id: extension._id,
+        title: extension.title,
+        files: sanitizedFiles.map((f) => ({ filename: f.filename, content: f.content })),
+        iterationHistory: extension.iterationHistory,
+        updatedAt: extension.updatedAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   generateExtension,
   downloadExtension,
   iterateExtension,
   getUserExtensions,
   deleteExtension,
+  getPublicGallery,
+  togglePublish,
+  upvoteExtension,
+  cloneExtension,
+  debugExtension
 };

@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { Sparkles } from 'lucide-react';
-import LoadingSpinner from './LoadingSpinner';
+import { motion } from 'framer-motion';
 
-const PromptInput = ({ onSubmit, isLoading, isModifying = false }) => {
+const PromptInput = forwardRef(({ onSubmit, isLoading, isModifying = false, externalPrompt, onExternalPromptConsumed }, ref) => {
   const [prompt, setPrompt] = useState('');
+  const [enableMonetization, setEnableMonetization] = useState(false);
+  const [monetizationLink, setMonetizationLink] = useState('');
+
+  // Handle external prompt from Blueprint modal
+  useEffect(() => {
+    if (externalPrompt) {
+      setPrompt(externalPrompt);
+      if (onExternalPromptConsumed) onExternalPromptConsumed();
+    }
+  }, [externalPrompt, onExternalPromptConsumed]);
 
   const examplePrompts = [
     'Block all ads on YouTube',
@@ -14,13 +24,13 @@ const PromptInput = ({ onSubmit, isLoading, isModifying = false }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (prompt.trim()) {
-      onSubmit(prompt);
+      onSubmit(prompt, enableMonetization ? monetizationLink : null);
       setPrompt('');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" ref={ref}>
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
@@ -60,9 +70,39 @@ const PromptInput = ({ onSubmit, isLoading, isModifying = false }) => {
         {isModifying ? 'Apply Changes' : 'Generate Extension'}
       </button>
 
-      {isLoading && <LoadingSpinner message="Creating your extension..." />}
+      {!isModifying && (
+        <div className="pt-4 border-t border-gray-800/50">
+          <label className="flex items-center gap-2 cursor-pointer mb-3">
+            <input 
+              type="checkbox" 
+              checked={enableMonetization}
+              onChange={(e) => setEnableMonetization(e.target.checked)}
+              className="w-4 h-4 rounded text-purple-main bg-gray-800 border-gray-700 focus:ring-purple-main focus:ring-offset-gray-950"
+            />
+            <span className="text-sm font-medium text-gray-300">Enable Monetization (Add a "Buy me a Coffee" link)</span>
+          </label>
+          
+          {enableMonetization && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mb-4"
+            >
+              <input
+                type="url"
+                value={monetizationLink}
+                onChange={(e) => setMonetizationLink(e.target.value)}
+                placeholder="https://buymeacoffee.com/username"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-main p-3 text-sm"
+              />
+            </motion.div>
+          )}
+        </div>
+      )}
     </form>
   );
-};
+});
+
+PromptInput.displayName = 'PromptInput';
 
 export default PromptInput;

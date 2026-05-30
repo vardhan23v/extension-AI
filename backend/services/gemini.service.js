@@ -24,12 +24,13 @@ const parseAIResponse = (text) => {
 
   return {
     title: parsedResponse.title,
+    storeDescription: parsedResponse.storeDescription || 'A powerful Chrome Extension.',
     files: parsedResponse.files,
   };
 };
 
-const generateExtensionFiles = async (userPrompt) => {
-  const systemPrompt = `You are an expert Chrome Extension developer. 
+const generateExtensionFiles = async (userPrompt, monetizationLink = null) => {
+  let systemPrompt = `You are an expert Chrome Extension developer. 
 The user will describe a Chrome extension in plain English.
 Your job is to generate ALL necessary files for a working Chrome Extension (Manifest V3).
 
@@ -38,6 +39,7 @@ STRICT RULES:
 2. JSON format must be EXACTLY:
 {
   "title": "Short extension name",
+  "storeDescription": "A highly engaging, SEO-optimized 3-sentence description for the Chrome Web Store.",
   "files": [
     { "filename": "manifest.json", "content": "..." },
     { "filename": "content.js", "content": "..." },
@@ -48,7 +50,12 @@ STRICT RULES:
 3. manifest.json must always be Manifest V3 with correct permissions.
 4. All file content must be valid, complete, and functional code.
 5. Do NOT include any file that is not needed.
-6. Never explain anything. Output JSON only.`;
+6. AESTHETICS ARE CRITICAL: The popup.html MUST use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>). Create a highly premium, beautiful, modern UI with nice colors, hover states, rounded corners, and proper padding. Do NOT output plain unstyled HTML.
+7. Never explain anything. Output JSON only.`;
+
+  if (monetizationLink) {
+    systemPrompt += `\n7. The user has enabled Monetization. You MUST add a prominent, beautiful 'Buy me a Coffee' or 'Support' button at the bottom of the popup.html that links to: ${monetizationLink}. Make it open in a new tab (target="_blank").`;
+  }
 
   try {
     const model = gemini.getGenerativeModel(

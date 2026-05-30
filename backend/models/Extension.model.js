@@ -30,6 +30,27 @@ const extensionSchema = new mongoose.Schema({
   zipPath: {
     type: String,
   },
+  isPublic: {
+    type: Boolean,
+    default: false,
+  },
+  upvotes: {
+    type: Number,
+    default: 0,
+  },
+  cloneCount: {
+    type: Number,
+    default: 0,
+  },
+  storeAssets: {
+    logoUrl: String,
+    bannerUrl: String,
+    description: String,
+  },
+  monetizationLink: {
+    type: String,
+    default: null,
+  },
   iterationHistory: [
     {
       prompt: String,
