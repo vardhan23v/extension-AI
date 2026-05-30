@@ -1,0 +1,175 @@
+// TalentDash — Prisma Schema
+// Career Intelligence Platform Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Company {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  normalizedName  String   @map("normalized_name")
+  industry        String
+  headquarters    String
+  foundedYear     Int?     @map("founded_year")
+  headcountRange  String?  @map("headcount_range")
+  description     String?
+  website         String?
+  logoUrl         String?  @map("logo_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  salaries        Salary[]
+  reviews         Review[]
+  interviews      Interview[]
+  workplaceIndex  WorkplaceIndex?
+  comparisonsA    CompanyComparison[] @relation("CompanyA")
+  comparisonsB    CompanyComparison[] @relation("CompanyB")
+
+  @@map("companies")
+}
+
+model Salary {
+  id                 String   @id @default(cuid())
+  companyId          String   @map("company_id")
+  role               String
+  level              String
+  location           String
+  currency           String   @default("INR")
+  experienceYears    Int      @map("experience_years")
+  baseSalary         Float    @map("base_salary")
+  bonus              Float    @default(0)
+  stock              Float    @default(0)
+  totalCompensation  Float    @map("total_compensation")
+  source             String   @default("user_submitted")
+  confidenceScore    Float    @default(0.5) @map("confidence_score")
+  isVerified         Boolean  @default(false) @map("is_verified")
+  submittedAt        DateTime @default(now()) @map("submitted_at")
+
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([role])
+  @@index([level])
+  @@index([location])
+  @@map("salaries")
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  companyId       String   @map("company_id")
+  title           String
+  pros            String
+  cons            String
+  rating          Float
+  workLifeBalance Float    @default(0) @map("work_life_balance")
+  culture         Float    @default(0)
+  growth          Float    @default(0)
+  compensation    Float    @default(0)
+  anonymousRole   String?  @map("anonymous_role")
+  isApproved      Boolean  @default(false) @map("is_approved")
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model Interview {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  role        String
+  difficulty  String
+  rounds      Int      @default(1)
+  questions   String
+  result      String
+  tips        String?
+  isApproved  Boolean  @default(false) @map("is_approved")
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([difficulty])
+  @@map("interviews")
+}
+
+model CompanyComparison {
+  id         String   @id @default(cuid())
+  companyAId String   @map("company_a_id")
+  companyBId String   @map("company_b_id")
+  metrics    String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  companyA   Company  @relation("CompanyA", fields: [companyAId], references: [id], onDelete: Cascade)
+  companyB   Company  @relation("CompanyB", fields: [companyBId], references: [id], onDelete: Cascade)
+
+  @@index([companyAId])
+  @@index([companyBId])
+  @@map("company_comparisons")
+}
+
+model WorkplaceIndex {
+  id                String  @id @default(cuid())
+  companyId         String  @unique @map("company_id")
+  cultureScore      Float   @default(0) @map("culture_score")
+  compensationScore Float   @default(0) @map("compensation_score")
+  growthScore       Float   @default(0) @map("growth_score")
+  diversityScore    Float   @default(0) @map("diversity_score")
+  remoteScore       Float   @default(0) @map("remote_score")
+  overallScore      Float   @default(0) @map("overall_score")
+
+  company           Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("workplace_indices")
+}
+
+model UserContribution {
+  id        String   @id @default(cuid())
+  type      String
+  status    String   @default("pending")
+  data      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([status])
+  @@map("user_contributions")
+}
+
+model CommunityPost {
+  id        String           @id @default(cuid())
+  title     String
+  content   String
+  category  String           @default("general")
+  authorTag String?          @map("author_tag")
+  upvotes   Int              @default(0)
+  downvotes Int              @default(0)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  comments  CommunityComment[]
+
+  @@index([category])
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id        String        @id @default(cuid())
+  postId    String        @map("post_id")
+  content   String
+  authorTag String?       @map("author_tag")
+  upvotes   Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("community_comments")
+}
