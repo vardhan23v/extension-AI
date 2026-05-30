@@ -1,0 +1,58 @@
+const mongoose = require('mongoose');
+
+const extensionSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  title: {
+    type: String,
+    required: [true, 'Please provide a title'],
+    trim: true,
+  },
+  prompt: {
+    type: String,
+    required: [true, 'Please provide the original prompt'],
+  },
+  files: [
+    {
+      filename: {
+        type: String,
+        required: true,
+      },
+      content: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
+  zipPath: {
+    type: String,
+  },
+  iterationHistory: [
+    {
+      prompt: String,
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Update updatedAt before saving
+extensionSchema.pre('save', function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+module.exports = mongoose.model('Extension', extensionSchema);
