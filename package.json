@@ -1,31 +1,26 @@
 {
-  "name": "extensio-ai-backend",
-  "version": "1.0.0",
-  "description": "Backend for Extensio.ai - Text-to-Chrome-Extension Generator",
-  "main": "server.js",
+  "name": "talentdash",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js",
-    "test": "jest",
-    "build": "cd frontend && npm install && npm run build"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
   },
-  "keywords": ["chrome-extension", "ai", "gemini"],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.5.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "archiver": "^6.0.0",
-    "@google/generative-ai": "^0.3.0",
-    "express-async-errors": "^3.1.1",
-    "uuid": "^9.0.0"
+    "next": "16.2.7",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.7",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
