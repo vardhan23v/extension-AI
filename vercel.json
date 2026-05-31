@@ -2,7 +2,6 @@
   "version": 2,
   "framework": "vite",
   "buildCommand": "cd frontend && npm install && npm run build",
-  "installCommand": "echo 'Installing in frontend during build phase'",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/**/*": {
