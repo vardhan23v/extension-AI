@@ -67,6 +67,7 @@ const GeneratorPage = () => {
       setSuccess('✓ Extension generated successfully!');
       setStatusMessage('');
       setFilesEdited(false);
+      setActiveTab('preview');
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to generate extension';
       setError(errorMsg);
@@ -105,6 +106,7 @@ const GeneratorPage = () => {
       setSuccess('✓ Extension modified successfully!');
       setStatusMessage('');
       setFilesEdited(false);
+      setActiveTab('preview');
 
       if (callback) callback(ext);
     } catch (err) {
