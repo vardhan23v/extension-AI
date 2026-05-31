@@ -44,13 +44,14 @@ STRICT RULES:
     { "filename": "manifest.json", "content": "..." },
     { "filename": "content.js", "content": "..." },
     { "filename": "popup.html", "content": "..." },
+    { "filename": "popup.css", "content": "..." },
     { "filename": "popup.js", "content": "..." }
   ]
 }
 3. manifest.json must always be Manifest V3 with correct permissions.
 4. All file content must be valid, complete, and functional code.
 5. Do NOT include any file that is not needed.
-6. AESTHETICS ARE CRITICAL: The popup.html MUST use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>). Create a highly premium, beautiful, modern UI with nice colors, hover states, rounded corners, and proper padding. Do NOT output plain unstyled HTML.
+6. AESTHETICS ARE CRITICAL: You MUST include a popup.css file with beautiful, modern, custom styling (colors, hover states, rounded corners, shadows, animations). Make sure to link popup.css in popup.html. You can also include Tailwind CSS via CDN in popup.html (<script src="https://cdn.tailwindcss.com"></script>). Do NOT output plain unstyled HTML.
 7. Never explain anything. Output JSON only.`;
 
   if (monetizationLink) {
