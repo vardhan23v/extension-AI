@@ -44,7 +44,7 @@
   --radius-full: 9999px;
 }
 
-@theme inline {
+@theme {
   /* Colors */
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
@@ -76,12 +76,6 @@
 }
 
 /* ─── Base Styles ──────────────────────────────────────────── */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
