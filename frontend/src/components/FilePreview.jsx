@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Eye, Save, FileJson, FileCode, FileText, FileType } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Pencil, Eye, Save, FileJson, FileCode, FileText, FileType, Copy } from 'lucide-react';
 
 const FilePreview = ({ files, onFilesChange }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -61,6 +62,13 @@ const FilePreview = ({ files, onFilesChange }) => {
     setEditMode(false);
   };
 
+  const handleCopy = () => {
+    if (files[activeTab]) {
+      navigator.clipboard.writeText(files[activeTab].content);
+      toast.success('Copied to clipboard!');
+    }
+  };
+
   const handleKeyDown = (e) => {
     // Tab key inserts 2 spaces
     if (e.key === 'Tab') {
@@ -83,23 +91,38 @@ const FilePreview = ({ files, onFilesChange }) => {
   return (
     <div>
       {/* File Tabs */}
-      <div className="flex items-center justify-between border-b border-gray-800 mb-0">
-        <div className="flex gap-1 overflow-x-auto flex-1">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 mb-0">
+        <motion.div 
+          className="flex gap-1 overflow-x-auto flex-1"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.1 }
+            }
+          }}
+        >
           {files.map((file, idx) => (
-            <button
+            <motion.button
               key={idx}
+              variants={{
+                hidden: { y: 20, opacity: 0 },
+                visible: { y: 0, opacity: 1 }
+              }}
               onClick={() => handleTabChange(idx)}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === idx
-                  ? 'text-purple-main border-b-2 border-purple-main bg-gray-900/30'
-                  : 'text-gray-400 hover:text-gray-300'
+                  ? 'text-purple-600 dark:text-purple-main border-b-2 border-purple-600 dark:border-purple-main bg-purple-50 dark:bg-gray-900/30'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
               }`}
             >
               {getFileIcon(file.filename)}
               {file.filename}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
 
         {/* Edit toggle */}
         <div className="flex items-center gap-1.5 px-2 flex-shrink-0">
@@ -125,14 +148,24 @@ const FilePreview = ({ files, onFilesChange }) => {
               </motion.button>
             </>
           ) : (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={startEditing}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-400 hover:text-purple-400 transition-colors border border-gray-700/50 rounded-lg hover:border-purple-main/30"
-            >
-              <Pencil className="w-3 h-3" /> Edit
-            </motion.button>
+            <>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCopy}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-gray-200 dark:border-gray-700/50 rounded-lg hover:border-blue-300 dark:hover:border-blue-400/30"
+              >
+                <Copy className="w-3 h-3" /> Copy
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={startEditing}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors border border-gray-200 dark:border-gray-700/50 rounded-lg hover:border-purple-300 dark:hover:border-purple-main/30"
+              >
+                <Pencil className="w-3 h-3" /> Edit
+              </motion.button>
+            </>
           )}
 
           {hasEdits && !editMode && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import api from '../api/axios';
 import PromptInput from '../components/PromptInput';
 import FilePreview from '../components/FilePreview';
@@ -29,8 +30,6 @@ const GeneratorPage = () => {
   const [generatedExtension, setGeneratedExtension] = useState(null);
   const [previousFiles, setPreviousFiles] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [activeTab, setActiveTab] = useState('code');
   const [debugError, setDebugError] = useState('');
@@ -44,8 +43,6 @@ const GeneratorPage = () => {
 
   const generateExtension = async (prompt, monetizationLink) => {
     setIsLoading(true);
-    setError('');
-    setSuccess('');
     setStatusMessage('Sending prompt to AI...');
     setPreviousFiles(null);
 
@@ -64,13 +61,13 @@ const GeneratorPage = () => {
 
       const response = await api.post('/extensions/generate', { prompt, monetizationLink });
       setGeneratedExtension(response.data.extension);
-      setSuccess('✓ Extension generated successfully!');
+      toast.success('Extension generated successfully!');
       setStatusMessage('');
       setFilesEdited(false);
       setActiveTab('preview');
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to generate extension';
-      setError(errorMsg);
+      toast.error(errorMsg);
       setStatusMessage('');
     } finally {
       setIsLoading(false);
@@ -92,8 +89,6 @@ const GeneratorPage = () => {
       setIsLoading(true);
     }
 
-    setError('');
-    setSuccess('');
     setStatusMessage('Applying modifications...');
 
     try {
@@ -103,7 +98,7 @@ const GeneratorPage = () => {
 
       const ext = response.data.extension;
       setGeneratedExtension(ext);
-      setSuccess('✓ Extension modified successfully!');
+      toast.success('Extension modified successfully!');
       setStatusMessage('');
       setFilesEdited(false);
       setActiveTab('preview');
@@ -111,7 +106,7 @@ const GeneratorPage = () => {
       if (callback) callback(ext);
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to iterate extension';
-      setError(errorMsg);
+      toast.error(errorMsg);
       setStatusMessage('');
       if (callback) callback(null);
     } finally {
@@ -135,7 +130,7 @@ const GeneratorPage = () => {
       link.click();
       link.parentElement.removeChild(link);
     } catch (err) {
-      setError('Failed to download extension');
+      toast.error('Failed to download extension');
     }
   };
 
@@ -151,8 +146,6 @@ const GeneratorPage = () => {
     );
 
     setIsLoading(true);
-    setError('');
-    setSuccess('');
     setStatusMessage('Auto-fixing code based on error...');
 
     try {
@@ -160,11 +153,11 @@ const GeneratorPage = () => {
         errorMessage: debugError,
       });
       setGeneratedExtension(response.data.extension);
-      setSuccess('✓ Bug fixed automatically!');
+      toast.success('Bug fixed automatically!');
       setDebugError('');
       setActiveTab('code');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to auto-fix bug');
+      toast.error(err.response?.data?.message || 'Failed to auto-fix bug');
     } finally {
       setIsLoading(false);
       setStatusMessage('');
@@ -177,13 +170,13 @@ const GeneratorPage = () => {
     try {
       const response = await api.post(`/extensions/${generatedExtension.id}/publish`);
       setIsPublic(response.data.isPublic);
-      setSuccess(
-        response.data.isPublic
-          ? '✓ Published to Community Gallery!'
-          : '✓ Removed from Community Gallery'
-      );
+      if (response.data.isPublic) {
+        toast.success('Published to Community Gallery!');
+      } else {
+        toast.success('Removed from Community Gallery');
+      }
     } catch (err) {
-      setError('Failed to update publish status');
+      toast.error('Failed to update publish status');
     } finally {
       setIsPublishing(false);
     }
@@ -354,7 +347,7 @@ const GeneratorPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-gray-950 py-8 relative overflow-hidden"
+      className="min-h-screen bg-white dark:bg-gray-950 py-8 relative overflow-hidden transition-colors duration-300"
     >
       {/* Abstract Background Elements */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-main/20 blur-[120px] rounded-full pointer-events-none" />
@@ -379,7 +372,7 @@ const GeneratorPage = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setBlueprintOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-main/10 text-purple-400 border border-purple-main/30 rounded-xl hover:bg-purple-main/20 transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-100 dark:bg-purple-main/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-main/30 rounded-xl hover:bg-purple-200 dark:hover:bg-purple-main/20 transition-colors font-medium"
                 >
                   <Zap className="w-4 h-4" />
                   Blueprints
@@ -420,37 +413,12 @@ const GeneratorPage = () => {
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="mb-4 bg-red-900/20 border border-red-900/50 rounded-xl p-4 flex gap-3 backdrop-blur-sm"
-                >
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-red-400 text-sm">{error}</p>
-                </motion.div>
-              )}
-
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="mb-4 bg-green-900/20 border border-green-900/50 rounded-xl p-4 flex gap-3 backdrop-blur-sm"
-                >
-                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-green-400 text-sm">{success}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {statusMessage && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mb-4 glass-panel rounded-xl p-4 border-blue-900/50"
+                className="mb-4 glass-panel rounded-xl p-4 border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-gray-900/60"
               >
                 <p className="text-blue-400 text-sm flex items-center gap-2">
                   <span className="relative flex h-3 w-3">
@@ -471,7 +439,7 @@ const GeneratorPage = () => {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-main" />
                 <div className="mb-6 mt-2 flex justify-between items-start">
                   <div>
-                    <h3 className="text-2xl font-bold text-white mb-1">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                       {generatedExtension.title}
                     </h3>
                     <p className="text-gray-400 text-sm flex items-center gap-2">
@@ -501,19 +469,27 @@ const GeneratorPage = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-gray-800 mb-6 gap-1 overflow-x-auto">
+                <div className="flex border-b border-gray-200 dark:border-gray-800 mb-6 gap-1 overflow-x-auto relative">
                   {TABS.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`pb-3 px-3 flex items-center gap-1.5 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+                      className={`pb-3 px-3 flex items-center gap-1.5 text-sm font-medium transition-colors whitespace-nowrap relative ${
                         activeTab === tab.id
-                          ? 'border-purple-main text-purple-400'
-                          : 'border-transparent text-gray-400 hover:text-white'
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
                       <tab.icon className="w-4 h-4" />
                       {tab.label}
+                      {activeTab === tab.id && (
+                        <motion.div
+                          layoutId="activeTabIndicator"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-main"
+                          initial={false}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        />
+                      )}
                     </button>
                   ))}
                 </div>

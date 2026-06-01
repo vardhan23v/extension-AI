@@ -1,11 +1,13 @@
 import React from 'react';
-import { Menu, LogOut, Code2, Sparkles } from 'lucide-react';
+import { Menu, LogOut, Code2, Sparkles, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -24,7 +26,7 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="glass-panel sticky top-0 z-50 border-b border-gray-800/50 backdrop-blur-xl">
+    <nav className="glass-panel sticky top-0 z-50 border-b border-gray-200/50 dark:border-gray-800/50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -34,7 +36,7 @@ const Navbar = () => {
             className="flex items-center gap-2 cursor-pointer" 
             onClick={() => handleNavigate('/')}
           >
-            <div className="bg-purple-main/20 p-1.5 rounded-lg border border-purple-main/30">
+            <div className="bg-purple-main/10 dark:bg-purple-main/20 p-1.5 rounded-lg border border-purple-main/20 dark:border-purple-main/30">
               <Code2 className="w-6 h-6 text-purple-main" />
             </div>
             <span className="font-extrabold text-xl text-transparent bg-clip-text bg-gradient-main tracking-tight">
@@ -46,7 +48,7 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-8">
             <button
               onClick={() => handleNavigate('/gallery')}
-              className={`transition-colors font-medium ${isActive('/gallery') ? 'text-purple-400' : 'text-gray-400 hover:text-white'}`}
+              className={`transition-colors font-medium ${isActive('/gallery') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
               Community
             </button>
@@ -54,13 +56,13 @@ const Navbar = () => {
               <>
                 <button
                   onClick={() => handleNavigate('/generate')}
-                  className={`flex items-center gap-2 transition-colors font-medium ${isActive('/generate') ? 'text-purple-400' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex items-center gap-2 transition-colors font-medium ${isActive('/generate') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 >
                   <Sparkles className="w-4 h-4" /> Generate
                 </button>
                 <button
                   onClick={() => handleNavigate('/dashboard')}
-                  className={`transition-colors font-medium ${isActive('/dashboard') ? 'text-purple-400' : 'text-gray-400 hover:text-white'}`}
+                  className={`transition-colors font-medium ${isActive('/dashboard') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 >
                   Dashboard
                 </button>
@@ -68,18 +70,27 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Desktop User Menu */}
+          {/* Desktop User Menu & Theme Toggle */}
           <div className="hidden md:flex items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleTheme}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </motion.button>
+            
             {isAuthenticated ? (
               <>
-                <div className="px-3 py-1.5 bg-gray-800/50 rounded-full border border-gray-700/50 text-gray-300 text-sm font-medium">
+                <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-full border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-gray-300 text-sm font-medium transition-colors">
                   {user?.email}
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-200 dark:border-red-500/20 transition-colors font-medium"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout
@@ -89,7 +100,7 @@ const Navbar = () => {
               <>
                 <button
                   onClick={() => handleNavigate('/login')}
-                  className="text-gray-400 hover:text-white transition-colors font-medium"
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-medium"
                 >
                   Login
                 </button>

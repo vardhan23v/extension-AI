@@ -11,12 +11,14 @@ import DashboardPage from './pages/DashboardPage';
 import GalleryPage from './pages/GalleryPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
+import { Toaster } from 'react-hot-toast';
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
         <LoadingSpinner message="Authenticating..." />
       </div>
     );
@@ -61,7 +63,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center transition-colors duration-300">
         <LoadingSpinner message="Starting up..." />
       </div>
     );
@@ -69,6 +71,18 @@ function App() {
 
   return (
     <Router>
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#1f2937',
+            color: '#fff',
+            borderRadius: '12px',
+          },
+          success: { iconTheme: { primary: '#34d399', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } }
+        }}
+      />
       <Navbar />
       <AnimatedRoutes />
     </Router>
