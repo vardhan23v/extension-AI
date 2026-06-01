@@ -15,6 +15,10 @@ const sanitizeFiles = (files) => {
   const sanitized = files.map((file) => {
     let content = file.content;
 
+    if (typeof content !== 'string') {
+      content = JSON.stringify(content, null, 2);
+    }
+
     // Check for eval()
     if (/eval\s*\(/.test(content)) {
       throw new Error(`Security violation in ${file.filename}: eval() is not allowed`);
