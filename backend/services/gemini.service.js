@@ -90,8 +90,7 @@ STRICT RULES:
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: "json_object" }
+            ]
           })
         });
 
@@ -120,8 +119,7 @@ STRICT RULES:
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
-          ],
-          response_format: { type: "json_object" }
+          ]
         })
       });
 
@@ -138,7 +136,9 @@ STRICT RULES:
       
       // Clean up the error message for the frontend
       const originalError = error.message.toLowerCase();
-      if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
+      if (process.env.GROQ_API_KEY) {
+         throw new Error(`AI Fallbacks failed. Groq/OpenRouter error: ${fallbackError.message}`);
+      } else if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
         throw new Error('API Rate Limit Exceeded. Your Gemini API Key has 0 quota (likely due to your region). Please add a free GROQ_API_KEY to your backend (.env file) to continue!');
       }
       
