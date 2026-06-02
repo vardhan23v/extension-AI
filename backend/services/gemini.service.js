@@ -86,7 +86,7 @@ STRICT RULES:
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'llama3-8b-8192',
+            model: 'llama-3.1-8b-instant',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
@@ -99,45 +99,43 @@ STRICT RULES:
           const content = groqData.choices[0].message.content;
           return parseAIResponse(content);
         }
-        console.log('Groq fallback failed, moving to OpenRouter. Error:', groqData.error?.message);
+        
+        let groqErrorMsg = groqData.error?.message || 'Unknown Groq error';
+        console.log('Groq fallback failed, moving to OpenRouter. Error:', groqErrorMsg);
+        
+        // Try OpenRouter as final fallback
+        console.log('Attempting fallback to OpenRouter...');
+        const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3.1-8b-instruct:free',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        });
+
+        const data = await openRouterResponse.json();
+        
+        if (!openRouterResponse.ok || data.error) {
+          throw new Error(`Groq Error: ${groqErrorMsg} | OpenRouter Error: ${data.error?.message || 'Unknown OpenRouter Error'}`);
+        }
+
+        const content = data.choices[0].message.content;
+        return parseAIResponse(content);
       }
-    } catch (groqError) {
-      console.error('Groq Error:', groqError.message);
-    }
-
-    // Try OpenRouter as final fallback
-    try {
-      console.log('Attempting fallback to OpenRouter...');
-      const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3-8b-instruct:free',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ]
-        })
-      });
-
-      const data = await openRouterResponse.json();
-      
-      if (!openRouterResponse.ok || data.error) {
-        throw new Error(data.error?.message || 'OpenRouter API failed');
-      }
-
-      const content = data.choices[0].message.content;
-      return parseAIResponse(content);
     } catch (fallbackError) {
-      console.error('Fallback OpenRouter Error:', fallbackError.message);
+      console.error('Fallback Error:', fallbackError.message);
       
       // Clean up the error message for the frontend
       const originalError = error.message.toLowerCase();
-      if (process.env.GROQ_API_KEY) {
-         throw new Error(`AI Fallbacks failed. Groq/OpenRouter error: ${fallbackError.message}`);
+      if (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) {
+         throw new Error(`AI Fallbacks failed. ${fallbackError.message}`);
       } else if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
         throw new Error('API Rate Limit Exceeded. Your Gemini API Key has 0 quota (likely due to your region). Please add a free GROQ_API_KEY to your backend (.env file) to continue!');
       }
