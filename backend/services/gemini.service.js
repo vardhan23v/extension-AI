@@ -3,14 +3,23 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const parseAIResponse = (text) => {
+  // Find the first '{' and the last '}'
+  const startIndex = text.indexOf('{');
+  const endIndex = text.lastIndexOf('}');
+  
+  let jsonText = text;
+  if (startIndex !== -1 && endIndex !== -1) {
+    jsonText = text.substring(startIndex, endIndex + 1);
+  }
+
   // Strip markdown code fence if present
-  let jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/gi, '').trim();
 
   let parsedResponse;
   try {
     parsedResponse = JSON.parse(jsonText);
   } catch (parseError) {
-    console.error('Failed to parse AI response:', jsonText);
+    console.error('Failed to parse AI response:', text);
     throw new Error('AI output was not valid JSON. Please try again.');
   }
 
