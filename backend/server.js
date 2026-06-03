@@ -12,7 +12,14 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function(origin, callback) {
+      // Allow same-origin requests (no origin header), Vercel preview URLs, and localhost
+      if (!origin || origin.includes('.vercel.app') || origin.includes('localhost')) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all for now - tighten in production if needed
+      }
+    },
     credentials: true,
   })
 );
@@ -28,7 +35,7 @@ mongoose
   .then(() => console.log('✓ MongoDB connected'))
   .catch((err) => {
     console.error('✗ MongoDB connection error:', err.message);
-    process.exit(1);
+    // Don't process.exit in serverless - let requests attempt to reconnect
   });
 
 // Routes
