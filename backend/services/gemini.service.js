@@ -67,96 +67,105 @@ STRICT RULES:
     systemPrompt += `\n7. The user has enabled Monetization. You MUST add a prominent, beautiful 'Buy me a Coffee' or 'Support' button at the bottom of the popup.html that links to: ${monetizationLink}. Make it open in a new tab (target="_blank").`;
   }
 
-  try {
-    const model = gemini.getGenerativeModel(
-      { model: 'gemini-2.0-flash' },
-      { apiVersion: 'v1beta' }
-    );
+  const errors = [];
 
-    const response = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${systemPrompt}\n\nUser request: ${userPrompt}` }],
-        },
-      ],
-    });
-
-    return parseAIResponse(response.response.text());
-  } catch (error) {
-    console.error('Gemini Service Error:', error.message);    // Try Groq first as a free fallback
+  // --- PRIMARY: Groq (fast, free, reliable) ---
+  if (process.env.GROQ_API_KEY) {
     try {
-      if (process.env.GROQ_API_KEY) {
-        console.log('Attempting fallback to Groq...');
-        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Type': 'application/json'
+      console.log('Trying primary provider: Groq...');
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 8000
+        })
+      });
+
+      const groqData = await groqResponse.json();
+      if (groqResponse.ok && groqData.choices && groqData.choices[0]) {
+        const content = groqData.choices[0].message.content;
+        return parseAIResponse(content);
+      }
+      const groqErr = groqData.error?.message || 'Unknown Groq error';
+      console.error('Groq failed:', groqErr);
+      errors.push(`Groq: ${groqErr}`);
+    } catch (groqError) {
+      console.error('Groq error:', groqError.message);
+      errors.push(`Groq: ${groqError.message}`);
+    }
+  }
+
+  // --- FALLBACK 1: Gemini ---
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      console.log('Trying fallback: Gemini...');
+      const model = gemini.getGenerativeModel(
+        { model: 'gemini-2.0-flash' },
+        { apiVersion: 'v1beta' }
+      );
+
+      const response = await model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\nUser request: ${userPrompt}` }],
           },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' },
-            max_tokens: 8000
-          })
-        });
+        ],
+      });
 
-        const groqData = await groqResponse.json();
-        if (groqResponse.ok && groqData.choices && groqData.choices[0]) {
-          const content = groqData.choices[0].message.content;
-          return parseAIResponse(content);
-        }
-        
-        let groqErrorMsg = groqData.error?.message || 'Unknown Groq error';
-        console.log('Groq fallback failed, moving to OpenRouter. Error:', groqErrorMsg);
-        
-        // Try OpenRouter as final fallback
-        console.log('Attempting fallback to OpenRouter...');
-        const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'meta-llama/llama-3.3-70b-instruct',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' },
-            max_tokens: 8000
-          })
-        });
+      return parseAIResponse(response.response.text());
+    } catch (geminiError) {
+      console.error('Gemini error:', geminiError.message);
+      errors.push(`Gemini: ${geminiError.message.split('Please retry')[0]}`);
+    }
+  }
 
-        const data = await openRouterResponse.json();
-        
-        if (!openRouterResponse.ok || data.error) {
-          throw new Error(`Groq Error: ${groqErrorMsg} | OpenRouter Error: ${data.error?.message || 'Unknown OpenRouter Error'}`);
-        }
+  // --- FALLBACK 2: OpenRouter ---
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      console.log('Trying fallback: OpenRouter...');
+      const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3.3-70b-instruct',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 8000
+        })
+      });
 
+      const data = await openRouterResponse.json();
+      if (openRouterResponse.ok && data.choices && data.choices[0]) {
         const content = data.choices[0].message.content;
         return parseAIResponse(content);
       }
-    } catch (fallbackError) {
-      console.error('Fallback Error:', fallbackError.message);
-      
-      // Clean up the error message for the frontend
-      const originalError = error.message.toLowerCase();
-      if (process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY) {
-         throw new Error(`AI Fallbacks failed. ${fallbackError.message}`);
-      } else if (originalError.includes('429') || originalError.includes('quota') || originalError.includes('rate-limit')) {
-        throw new Error('API Rate Limit Exceeded. Your Gemini API Key has 0 quota (likely due to your region). Please add a free GROQ_API_KEY to your backend (.env file) to continue!');
-      }
-      
-      // Throw original error so frontend sees the original Gemini issue if fallback fails
-      throw new Error('AI Generation Failed: ' + (error.message.split('Please retry')[0] || 'Unknown error occurred.'));
+      const orErr = data.error?.message || 'Unknown OpenRouter error';
+      console.error('OpenRouter failed:', orErr);
+      errors.push(`OpenRouter: ${orErr}`);
+    } catch (orError) {
+      console.error('OpenRouter error:', orError.message);
+      errors.push(`OpenRouter: ${orError.message}`);
     }
   }
+
+  // All providers failed
+  throw new Error(`All AI providers failed. ${errors.join(' | ')}`);
 };
 
 module.exports = { generateExtensionFiles };
