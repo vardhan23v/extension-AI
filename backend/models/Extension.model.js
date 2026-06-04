@@ -77,3 +77,4 @@ extensionSchema.pre('save', function (next) {
 });
 
 module.exports = mongoose.model('Extension', extensionSchema);
+// Extension model schema
