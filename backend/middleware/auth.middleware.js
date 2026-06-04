@@ -17,3 +17,4 @@ const authMiddleware = (req, res, next) => {
 };
 
 module.exports = authMiddleware;
+// Auth middleware setup
