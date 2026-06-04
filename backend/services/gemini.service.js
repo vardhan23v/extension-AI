@@ -168,4 +168,4 @@ STRICT RULES:
   throw new Error(`All AI providers failed. ${errors.join(' | ')}`);
 };
 
-module.exports = { generateExtensionFiles };
+module.exports = { generateExtensionFiles };// Gemini AI service integration
