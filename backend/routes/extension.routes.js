@@ -28,3 +28,4 @@ router.post('/:id/clone', authMiddleware, cloneExtension);
 router.post('/:id/debug', authMiddleware, debugExtension);
 
 module.exports = router;
+// Extension CRUD routes
