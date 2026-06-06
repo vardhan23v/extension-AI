@@ -408,3 +408,4 @@ module.exports = {
   cloneExtension,
   debugExtension
 };
+// Gallery controller
