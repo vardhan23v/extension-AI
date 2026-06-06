@@ -409,3 +409,4 @@ module.exports = {
   debugExtension
 };
 // Gallery controller
+// Iteration support
