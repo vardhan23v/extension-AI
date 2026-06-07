@@ -169,3 +169,4 @@ STRICT RULES:
 };
 
 module.exports = { generateExtensionFiles };// Gemini AI service integration
+// Monetization support
