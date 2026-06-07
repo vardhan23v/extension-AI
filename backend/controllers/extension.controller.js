@@ -410,3 +410,4 @@ module.exports = {
 };
 // Gallery controller
 // Iteration support
+// Debug endpoint
