@@ -170,3 +170,4 @@ STRICT RULES:
 
 module.exports = { generateExtensionFiles };// Gemini AI service integration
 // Monetization support
+// Multi-provider AI fallback chain
