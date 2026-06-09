@@ -24,7 +24,11 @@ const createZip = (extensionId, files) => {
           fs.mkdirSync(fileDir, { recursive: true });
         }
         
-        fs.writeFileSync(filePath, file.content, 'utf8');
+        if (file.encoding === 'base64') {
+          fs.writeFileSync(filePath, file.content, 'base64');
+        } else {
+          fs.writeFileSync(filePath, file.content, 'utf8');
+        }
       }
 
       // Create zip archive

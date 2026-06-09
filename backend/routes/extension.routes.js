@@ -11,7 +11,8 @@ const {
   togglePublish,
   upvoteExtension,
   cloneExtension,
-  debugExtension
+  debugExtension,
+  auditExtension
 } = require('../controllers/extension.controller');
 
 router.post('/generate', authMiddleware, generateExtension);
@@ -26,6 +27,7 @@ router.post('/:id/publish', authMiddleware, togglePublish);
 router.post('/:id/upvote', upvoteExtension);
 router.post('/:id/clone', authMiddleware, cloneExtension);
 router.post('/:id/debug', authMiddleware, debugExtension);
+router.post('/:id/audit', authMiddleware, auditExtension);
 
 module.exports = router;
 // Extension CRUD routes

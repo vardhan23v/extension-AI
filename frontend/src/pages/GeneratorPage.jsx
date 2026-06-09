@@ -23,6 +23,7 @@ import {
   GitCompare,
   Clock,
   MessageSquare,
+  ShieldCheck,
 } from 'lucide-react';
 
 const GeneratorPage = () => {
@@ -39,9 +40,11 @@ const GeneratorPage = () => {
   const [blueprintPrompt, setBlueprintPrompt] = useState('');
   const [filesEdited, setFilesEdited] = useState(false);
   const [chatIterating, setChatIterating] = useState(false);
+  const [securityAudit, setSecurityAudit] = useState(null);
+  const [isAuditing, setIsAuditing] = useState(false);
   const promptInputRef = useRef(null);
 
-  const generateExtension = async (prompt, monetizationLink) => {
+  const generateExtension = async (prompt, options = {}) => {
     setIsLoading(true);
     setStatusMessage('Sending prompt to AI...');
     setPreviousFiles(null);
@@ -59,7 +62,7 @@ const GeneratorPage = () => {
         setStatusMessage((prev) => (prev ? 'Packaging your extension...' : prev));
       }, 8000);
 
-      const response = await api.post('/extensions/generate', { prompt, monetizationLink });
+      const response = await api.post('/extensions/generate', { prompt, ...options });
       setGeneratedExtension(response.data.extension);
       toast.success('Extension generated successfully!');
       setStatusMessage('');
@@ -134,8 +137,8 @@ const GeneratorPage = () => {
     }
   };
 
-  const handlePromptSubmit = (prompt, monetizationLink) => {
-    generateExtension(prompt, monetizationLink);
+  const handlePromptSubmit = (prompt, options) => {
+    generateExtension(prompt, options);
   };
 
   const handleDebugSubmit = async () => {
@@ -179,6 +182,20 @@ const GeneratorPage = () => {
       toast.error('Failed to update publish status');
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const runAudit = async () => {
+    if (!generatedExtension) return;
+    setIsAuditing(true);
+    try {
+      const response = await api.post(`/extensions/${generatedExtension.id}/audit`);
+      setSecurityAudit(response.data.audit);
+      toast.success('Audit complete');
+    } catch (err) {
+      toast.error('Audit failed');
+    } finally {
+      setIsAuditing(false);
     }
   };
 
@@ -229,10 +246,44 @@ const GeneratorPage = () => {
           if (cb) setTimeout(() => cb({}), 0);
         };
         const storageArea = {
-          get: (keys, cb) => { if (cb) setTimeout(() => cb({}), 0); return Promise.resolve({}); },
-          set: (items, cb) => { if (cb) setTimeout(() => cb(), 0); return Promise.resolve(); },
-          remove: (keys, cb) => { if (cb) setTimeout(() => cb(), 0); return Promise.resolve(); },
-          clear: (cb) => { if (cb) setTimeout(() => cb(), 0); return Promise.resolve(); },
+          get: (keys, cb) => {
+            let result = {};
+            try {
+              const stored = JSON.parse(localStorage.getItem('chrome_storage_mock') || '{}');
+              if (typeof keys === 'string') result[keys] = stored[keys];
+              else if (Array.isArray(keys)) keys.forEach(k => result[k] = stored[k]);
+              else if (keys && typeof keys === 'object') {
+                result = { ...keys };
+                Object.keys(keys).forEach(k => { if (stored[k] !== undefined) result[k] = stored[k]; });
+              } else result = stored;
+            } catch(e) {}
+            if (cb) setTimeout(() => cb(result), 0);
+            return Promise.resolve(result);
+          },
+          set: (items, cb) => {
+            try {
+              const stored = JSON.parse(localStorage.getItem('chrome_storage_mock') || '{}');
+              Object.assign(stored, items);
+              localStorage.setItem('chrome_storage_mock', JSON.stringify(stored));
+            } catch(e) {}
+            if (cb) setTimeout(() => cb(), 0);
+            return Promise.resolve();
+          },
+          remove: (keys, cb) => {
+            try {
+              const stored = JSON.parse(localStorage.getItem('chrome_storage_mock') || '{}');
+              const keysArray = Array.isArray(keys) ? keys : [keys];
+              keysArray.forEach(k => delete stored[k]);
+              localStorage.setItem('chrome_storage_mock', JSON.stringify(stored));
+            } catch(e) {}
+            if (cb) setTimeout(() => cb(), 0);
+            return Promise.resolve();
+          },
+          clear: (cb) => {
+            localStorage.removeItem('chrome_storage_mock');
+            if (cb) setTimeout(() => cb(), 0);
+            return Promise.resolve();
+          },
           onChanged: { addListener: noop, removeListener: noop }
         };
         chrome.storage = { local: storageArea, sync: storageArea, onChanged: { addListener: noop, removeListener: noop } };
@@ -339,6 +390,7 @@ const GeneratorPage = () => {
     { id: 'diff', label: 'Diff', icon: GitCompare },
     { id: 'history', label: 'History', icon: Clock },
     { id: 'store', label: 'Assets', icon: ImageIcon },
+    { id: 'security', label: 'Security', icon: ShieldCheck },
     { id: 'debug', label: 'Fix Bug', icon: Bug },
   ];
 
@@ -551,6 +603,54 @@ const GeneratorPage = () => {
                           {generatedExtension.storeAssets.description}
                         </p>
                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'security' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-white font-bold">Security & Permissions Audit</h4>
+                        <button
+                          onClick={runAudit}
+                          disabled={isAuditing}
+                          className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors"
+                        >
+                          {isAuditing ? 'Auditing...' : 'Run Audit'}
+                        </button>
+                      </div>
+                      
+                      {!securityAudit && !isAuditing && (
+                        <p className="text-gray-400 text-sm">Run an AI security audit to check for excessive permissions and bad practices.</p>
+                      )}
+                      
+                      {securityAudit && (
+                        <div className="space-y-4">
+                          <div className={`p-6 rounded-xl border ${securityAudit.score >= 80 ? 'bg-green-900/20 border-green-800' : 'bg-red-900/20 border-red-800'}`}>
+                            <div className="flex items-center gap-4">
+                              <div className={`text-4xl font-extrabold ${securityAudit.score >= 80 ? 'text-green-400' : 'text-red-400'}`}>
+                                {securityAudit.score}/100
+                              </div>
+                              <div>
+                                <h5 className={`font-bold ${securityAudit.score >= 80 ? 'text-green-300' : 'text-red-300'}`}>
+                                  {securityAudit.isSafe ? 'Looks Safe' : 'Security Risks Detected'}
+                                </h5>
+                                <p className="text-sm text-gray-400 mt-1">Based on Manifest V3 best practices.</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {securityAudit.warnings && securityAudit.warnings.length > 0 && (
+                            <div className="space-y-2 mt-4">
+                              <h5 className="text-white font-semibold text-sm">Warnings:</h5>
+                              <ul className="list-disc pl-5 space-y-1">
+                                {securityAudit.warnings.map((warn, i) => (
+                                  <li key={i} className="text-amber-400 text-sm">{warn}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
