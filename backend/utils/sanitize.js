@@ -57,3 +57,4 @@ const sanitizeFiles = (files) => {
 };
 
 module.exports = { sanitizeFiles };
+// Input sanitization
