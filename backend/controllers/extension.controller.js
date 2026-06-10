@@ -8,7 +8,7 @@ const path = require('path');
 
 const generateExtension = async (req, res) => {
   try {
-    const { prompt, monetizationLink } = req.body;
+    const { prompt, monetizationLink, webhookUrl, languages } = req.body;
     const userId = req.user.userId;
 
     if (!prompt || prompt.trim().length === 0) {
@@ -18,7 +18,7 @@ const generateExtension = async (req, res) => {
     // Call Gemini AI
     let aiResponse;
     try {
-      aiResponse = await generateExtensionFiles(prompt, monetizationLink);
+      aiResponse = await generateExtensionFiles(prompt, { monetizationLink, webhookUrl, languages });
     } catch (aiError) {
       return res.status(400).json({ message: aiError.message });
     }
@@ -367,7 +367,7 @@ const debugExtension = async (req, res) => {
 The generated code threw this error: "${errorMessage}". 
 Please fix the code files to resolve this error.`;
 
-    let aiResponse = await generateExtensionFiles(combinedPrompt, extension.monetizationLink);
+    let aiResponse = await generateExtensionFiles(combinedPrompt, { monetizationLink: extension.monetizationLink });
     let sanitizedFiles = sanitizeFiles(aiResponse.files);
     
     const newZipPath = await createZip(id, sanitizedFiles);
