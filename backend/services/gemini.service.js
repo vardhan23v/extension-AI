@@ -178,6 +178,8 @@ STRICT RULES:
 
   // All providers failed
   throw new Error(`All AI providers failed. ${errors.join(' | ')}`);
+};
+
 const auditExtensionCode = async (files) => {
   const codeToAudit = files
     .filter(f => f.filename.endsWith('.json') || f.filename.endsWith('.js') || f.filename.endsWith('.html'))
