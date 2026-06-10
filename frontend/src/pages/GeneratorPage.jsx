@@ -703,18 +703,27 @@ const GeneratorPage = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="glass-card-premium rounded-2xl p-12 text-center min-h-[400px] flex flex-col items-center justify-center border-dashed border-2 border-gray-700/50"
+                className="glass-card-premium rounded-2xl p-12 text-center min-h-[400px] flex flex-col items-center justify-center border-dashed border-2 border-purple-900/30 relative overflow-hidden"
               >
-                <Zap className="w-12 h-12 text-gray-600 mb-4" />
-                <p className="text-gray-400 font-medium mb-4">
-                  Describe your extension in plain English and click "Generate Extension" to
-                  get started.
+                <div className="absolute inset-0 bg-gradient-to-b from-purple-main/5 to-transparent pointer-events-none" />
+                
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-purple-main/20 rounded-full blur-xl animate-pulse-slow" />
+                  <div className="w-20 h-20 rounded-2xl bg-gray-900/80 border border-gray-800 flex items-center justify-center relative z-10 shadow-2xl">
+                    <Code2 className="w-10 h-10 text-purple-400 animate-pulse" />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-2 relative z-10">AI Canvas Ready</h3>
+                <p className="text-gray-400 font-medium mb-8 max-w-sm relative z-10">
+                  Describe your extension in the prompt box, and watch the AI generate your complete codebase here in real-time.
                 </p>
+                
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setBlueprintOpen(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 text-sm bg-purple-main/10 text-purple-400 border border-purple-main/30 rounded-xl hover:bg-purple-main/20 transition-colors font-medium"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm bg-purple-main/10 text-purple-400 border border-purple-main/30 rounded-xl hover:bg-purple-main/20 transition-colors font-medium relative z-10 btn-shimmer"
                 >
                   <Zap className="w-4 h-4" />
                   Or start from a Blueprint

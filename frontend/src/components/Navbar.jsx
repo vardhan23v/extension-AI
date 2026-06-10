@@ -26,7 +26,7 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="glass-panel sticky top-0 z-50 border-b border-gray-200/50 dark:border-gray-800/50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl transition-colors duration-300">
+    <nav className="glass-panel sticky top-0 z-50 border-b border-gray-200/50 dark:border-gray-800/50 bg-white/60 dark:bg-[#05010D]/70 backdrop-blur-xl transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -108,7 +108,7 @@ const Navbar = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigate('/register')}
-                  className="px-5 py-2.5 bg-gradient-main text-white rounded-xl hover:opacity-90 transition-opacity font-bold shadow-lg shadow-purple-900/20"
+                  className="px-5 py-2.5 bg-gradient-main text-white rounded-xl hover:opacity-90 transition-opacity font-bold shadow-lg shadow-purple-900/20 btn-shimmer"
                 >
                   Sign Up
                 </motion.button>

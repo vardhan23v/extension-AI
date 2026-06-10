@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import ExtensionCard from '../components/ExtensionCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Star, Sparkles, Code2 } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -111,6 +111,46 @@ const DashboardPage = () => {
           <div className="mb-4 bg-red-900/20 border border-red-900/50 text-red-400 px-4 py-3 rounded-xl backdrop-blur-sm">
             {error}
           </div>
+        )}
+
+        {/* Bento Box Stats */}
+        {!loading && extensions.length > 0 && (
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+          >
+            <div className="glass-card-premium rounded-2xl p-6 flex flex-col justify-between">
+              <div className="w-12 h-12 rounded-xl bg-purple-main/20 flex items-center justify-center mb-4">
+                <Code2 className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Total Extensions</p>
+                <h3 className="text-3xl font-bold text-white">{extensions.length}</h3>
+              </div>
+            </div>
+            <div className="glass-card-premium rounded-2xl p-6 flex flex-col justify-between">
+              <div className="w-12 h-12 rounded-xl bg-blue-main/20 flex items-center justify-center mb-4">
+                <Sparkles className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Files Generated</p>
+                <h3 className="text-3xl font-bold text-white">
+                  {extensions.reduce((acc, ext) => acc + (ext.files?.length || 0), 0)}
+                </h3>
+              </div>
+            </div>
+            <div className="glass-card-premium rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-main opacity-10 group-hover:opacity-20 transition-opacity" />
+              <div className="relative z-10 w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-4">
+                <Star className="w-6 h-6 text-green-400" />
+              </div>
+              <div className="relative z-10">
+                <p className="text-gray-400 text-sm font-medium">Developer Status</p>
+                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-main">Pro Builder</h3>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         <div className="mb-10 relative">

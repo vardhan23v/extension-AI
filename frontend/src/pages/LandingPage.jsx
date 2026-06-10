@@ -77,7 +77,7 @@ const LandingPage = () => {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="min-h-screen bg-gray-950 relative overflow-hidden"
+      className="min-h-screen bg-[#05010D] relative overflow-hidden"
     >
       {/* Dynamic Background */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-main/20 blur-[120px] rounded-full pointer-events-none" />
@@ -111,7 +111,7 @@ const LandingPage = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/register')}
-              className="px-8 py-4 bg-gradient-main text-white rounded-xl font-bold shadow-lg shadow-purple-900/40 transition-all flex items-center gap-2"
+              className="px-8 py-4 bg-gradient-main text-white rounded-xl font-bold shadow-lg shadow-purple-900/40 transition-all flex items-center gap-2 btn-shimmer"
             >
               Start Building Free <ChevronRight className="w-5 h-5" />
             </motion.button>
@@ -238,7 +238,7 @@ const LandingPage = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('/register')}
-                className="px-8 py-3 bg-gradient-main text-white rounded-xl font-bold shadow-lg shadow-purple-900/40 flex items-center gap-2"
+                className="px-8 py-3 bg-gradient-main text-white rounded-xl font-bold shadow-lg shadow-purple-900/40 flex items-center gap-2 btn-shimmer"
               >
                 Create an Account <ArrowRight className="w-4 h-4" />
               </motion.button>

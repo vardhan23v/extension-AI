@@ -12,10 +12,12 @@ export default {
         'emerald-accent': '#34D399',
         'amber-accent': '#FBBF24',
         'rose-accent': '#FB7185',
+        'space-dark': '#05010D',
       },
       backgroundImage: {
         'gradient-main': 'linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)',
         'gradient-glass': 'linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+        'shimmer-gradient': 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%)',
       },
       backdropBlur: {
         'xs': '2px',
@@ -25,6 +27,7 @@ export default {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'stepper-line': 'stepper-line 0.5s ease-out forwards',
         'float': 'float 6s ease-in-out infinite',
+        'shimmer': 'shimmer 2.5s infinite linear',
       },
       keyframes: {
         spotlight: {
@@ -38,6 +41,10 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-10px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
         },
       },
     },
