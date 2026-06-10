@@ -17,6 +17,7 @@ import {
   Zap,
   Eye,
   Code,
+  Code2,
   Image as ImageIcon,
   Bug,
   Share2,
