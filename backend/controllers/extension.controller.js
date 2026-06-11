@@ -380,7 +380,6 @@ Please fix the code files to resolve this error.`;
     extension.iterationHistory.push({ prompt: 'DEBUG: ' + errorMessage, timestamp: new Date() });
     
     await extension.save();
-
     res.status(200).json({
       success: true,
       extension: {
@@ -392,7 +391,8 @@ Please fix the code files to resolve this error.`;
       },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Debug extension error:', error);
+    res.status(400).json({ message: error.message || 'Failed to auto-fix bug due to AI provider error' });
   }
 };
 
