@@ -136,7 +136,7 @@ const DashboardPage = () => {
               <div>
                 <p className="text-gray-400 text-sm font-medium">Files Generated</p>
                 <h3 className="text-3xl font-bold text-white">
-                  {extensions.reduce((acc, ext) => acc + (ext.files?.length || 0), 0)}
+                  {extensions.reduce((acc, ext) => acc + (ext.fileCount || 0), 0)}
                 </h3>
               </div>
             </div>

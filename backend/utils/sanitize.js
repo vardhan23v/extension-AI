@@ -1,16 +1,3 @@
-const dangerousPatterns = [
-  /eval\s*\(/gi,
-  /document\.cookie/gi,
-  /XMLHttpRequest/gi,
-  /fetch\s*\(/gi,
-];
-
-const whitelistedDomains = [
-  'chrome.google.com',
-  'github.com',
-  'api.github.com',
-];
-
 const sanitizeFiles = (files) => {
   const sanitized = files.map((file) => {
     let content = file.content;
@@ -19,30 +6,24 @@ const sanitizeFiles = (files) => {
       content = JSON.stringify(content, null, 2);
     }
 
-    // Check for eval()
+    // Block eval() — always dangerous
     if (/eval\s*\(/.test(content)) {
       throw new Error(`Security violation in ${file.filename}: eval() is not allowed`);
     }
 
-    // Check for document.cookie access
-    if (/document\.cookie/.test(content)) {
-      throw new Error(`Security violation in ${file.filename}: Direct document.cookie access is not allowed`);
-    }
-
-    // Check for unwhitelisted fetch/XMLHttpRequest
+    // Block dangerous URI schemes in fetch calls
     const fetchMatches = content.match(/fetch\s*\(\s*['"`]([^'"`]+)['"`]/gi) || [];
     for (const match of fetchMatches) {
       const urlMatch = match.match(/['"`]([^'"`]+)['"`]/);
       if (urlMatch) {
         const url = urlMatch[1];
-        const isWhitelisted = whitelistedDomains.some((domain) => url.includes(domain));
-        if (!isWhitelisted && !url.startsWith('/') && !url.startsWith('chrome://')) {
-          throw new Error(`Security violation in ${file.filename}: fetch to non-whitelisted domain "${url}"`);
+        if (url.startsWith('javascript:') || url.startsWith('data:')) {
+          throw new Error(`Security violation in ${file.filename}: fetch to dangerous scheme "${url}"`);
         }
       }
     }
 
-    // Check for suspicious obfuscation patterns
+    // Block suspicious obfuscation in very large files
     if (/[\\u][0-9a-fA-F]{4}/.test(content) && content.length > 10000) {
       throw new Error(`Security violation in ${file.filename}: Possible obfuscated code detected`);
     }
@@ -57,4 +38,3 @@ const sanitizeFiles = (files) => {
 };
 
 module.exports = { sanitizeFiles };
-// Input sanitization

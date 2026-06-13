@@ -88,6 +88,11 @@ select {
   pointer-events: none;
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 /* Premium Glassmorphism — upgraded with noise + inner glow */
 .glass-card-premium {
   @apply bg-gradient-glass backdrop-blur-md border border-glass-border shadow-xl;
