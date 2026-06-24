@@ -1,5 +1,8 @@
 # ✨ Extension AI
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
+**[🚀 View Live Demo on Vercel](https://extension-ai.vercel.app/)**
+
 **Extension AI** is an intelligent web application that empowers users to build fully functional Chrome Extensions using plain English prompts. Powered by advanced AI models (Gemini & Groq), it generates Manifest V3 compliant code, provides a sandboxed live preview, and packages the extension into a ready-to-load `.zip` file in seconds.
 
 ## 🚀 Features
