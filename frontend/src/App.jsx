@@ -7,6 +7,8 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import GeneratorPage from './pages/GeneratorPage';
+import TemplatesPage from './pages/TemplatesPage';
+import SharedViewPage from './pages/SharedViewPage';
 import DashboardPage from './pages/DashboardPage';
 import GalleryPage from './pages/GalleryPage';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -35,6 +37,8 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
+        <Route path="/shared/:id" element={<SharedViewPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route

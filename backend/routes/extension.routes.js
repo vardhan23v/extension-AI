@@ -12,7 +12,9 @@ const {
   upvoteExtension,
   cloneExtension,
   debugExtension,
-  auditExtension
+  auditExtension,
+  enhancePrompt,
+  getSharedExtension
 } = require('../controllers/extension.controller');
 
 router.post('/generate', authMiddleware, generateExtension);
@@ -23,6 +25,8 @@ router.delete('/:id', authMiddleware, deleteExtension);
 
 // New Routes
 router.get('/gallery', getPublicGallery);
+router.post('/enhance-prompt', authMiddleware, enhancePrompt);
+router.get('/shared/:id', getSharedExtension);
 router.post('/:id/publish', authMiddleware, togglePublish);
 router.post('/:id/upvote', upvoteExtension);
 router.post('/:id/clone', authMiddleware, cloneExtension);
@@ -30,4 +34,3 @@ router.post('/:id/debug', authMiddleware, debugExtension);
 router.post('/:id/audit', authMiddleware, auditExtension);
 
 module.exports = router;
-// Extension CRUD routes

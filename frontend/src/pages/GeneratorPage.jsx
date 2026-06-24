@@ -25,6 +25,7 @@ import {
   Clock,
   MessageSquare,
   ShieldCheck,
+  Link2,
 } from 'lucide-react';
 
 const GeneratorPage = () => {
@@ -519,6 +520,23 @@ const GeneratorPage = () => {
                     <Share2 className="w-4 h-4" />
                     {isPublic ? 'Published' : 'Publish'}
                   </motion.button>
+                  {isPublic && generatedExtension && (
+                    <motion.button
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/shared/${generatedExtension.id}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        toast.success('Share link copied!');
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-blue-main/10 text-blue-400 border border-blue-main/30 hover:bg-blue-main/20 transition-colors"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      Copy Link
+                    </motion.button>
+                  )}
                 </div>
 
                 {/* Tabs */}
@@ -557,7 +575,7 @@ const GeneratorPage = () => {
                   )}
 
                   {activeTab === 'preview' && (
-                    <BrowserFrame extensionTitle={generatedExtension.title}>
+                    <BrowserFrame extensionTitle={generatedExtension.title} iframeSrcDoc={getIframeSource()}>
                       <iframe
                         title="Extension Preview"
                         srcDoc={getIframeSource()}

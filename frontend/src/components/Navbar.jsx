@@ -47,6 +47,12 @@ const Navbar = () => {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
             <button
+              onClick={() => handleNavigate('/templates')}
+              className={`transition-colors font-medium ${isActive('/templates') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+              Templates
+            </button>
+            <button
               onClick={() => handleNavigate('/gallery')}
               className={`transition-colors font-medium ${isActive('/gallery') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
@@ -135,6 +141,12 @@ const Navbar = () => {
               className="md:hidden overflow-hidden"
             >
               <div className="pb-4 pt-2 border-t border-gray-800/50 space-y-2 mt-2">
+              <button
+                  onClick={() => handleNavigate('/templates')}
+                  className={`block w-full text-left px-4 py-3 rounded-lg ${isActive('/templates') ? 'bg-purple-main/10 text-purple-400' : 'text-gray-300 hover:bg-gray-800/50'}`}
+                >
+                  Templates
+                </button>
                 <button
                   onClick={() => handleNavigate('/gallery')}
                   className={`block w-full text-left px-4 py-3 rounded-lg ${isActive('/gallery') ? 'bg-purple-main/10 text-purple-400' : 'text-gray-300 hover:bg-gray-800/50'}`}

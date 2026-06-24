@@ -422,6 +422,110 @@ const auditExtension = async (req, res) => {
   }
 };
 
+const enhancePrompt = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({ message: 'Please provide a prompt to enhance' });
+    }
+
+    const systemPrompt = `You are an expert Chrome Extension product designer. The user has written a brief description of a Chrome extension they want to build. Your job is to expand it into a detailed, high-quality prompt that will produce a better extension.
+
+Rules:
+1. Keep the user's original intent intact.
+2. Add specific UI details (popup layout, colors, components).
+3. Add functional details (what APIs to use, storage, permissions).
+4. Add UX details (animations, loading states, error handling).
+5. Keep it to 8-12 bullet points maximum.
+6. Output ONLY the enhanced prompt text, no explanation, no markdown formatting, no quotes.`;
+
+    let enhancedPrompt = null;
+
+    // Try Groq first
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: `Enhance this Chrome extension prompt:\n"${prompt}"` }
+            ],
+            max_tokens: 1000
+          })
+        });
+        const data = await groqResponse.json();
+        if (groqResponse.ok && data.choices && data.choices[0]) {
+          enhancedPrompt = data.choices[0].message.content.trim();
+        }
+      } catch (e) {
+        console.error('Groq enhance failed:', e.message);
+      }
+    }
+
+    // Fallback to Gemini
+    if (!enhancedPrompt && process.env.GEMINI_API_KEY) {
+      try {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const response = await model.generateContent(`${systemPrompt}\n\nEnhance this Chrome extension prompt:\n"${prompt}"`);
+        enhancedPrompt = response.response.text().trim();
+      } catch (e) {
+        console.error('Gemini enhance failed:', e.message);
+      }
+    }
+
+    if (!enhancedPrompt) {
+      return res.status(500).json({ message: 'Failed to enhance prompt. Please try again.' });
+    }
+
+    // Clean up any quotes wrapping the response
+    enhancedPrompt = enhancedPrompt.replace(/^["']|["']$/g, '').trim();
+
+    res.status(200).json({ success: true, enhancedPrompt });
+  } catch (error) {
+    console.error('Enhance prompt error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getSharedExtension = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const extension = await Extension.findById(id);
+    if (!extension || !extension.isPublic) {
+      return res.status(404).json({ message: 'Extension not found or not public' });
+    }
+
+    res.status(200).json({
+      success: true,
+      extension: {
+        id: extension._id,
+        title: extension.title,
+        prompt: extension.prompt,
+        storeAssets: extension.storeAssets,
+        files: extension.files.map((f) => ({
+          filename: f.filename,
+          content: f.content,
+        })),
+        upvotes: extension.upvotes,
+        cloneCount: extension.cloneCount,
+        createdAt: extension.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Get shared extension error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   generateExtension,
   downloadExtension,
@@ -433,8 +537,7 @@ module.exports = {
   upvoteExtension,
   cloneExtension,
   debugExtension,
-  auditExtension
+  auditExtension,
+  enhancePrompt,
+  getSharedExtension
 };
-// Gallery controller
-// Iteration support
-// Debug endpoint
