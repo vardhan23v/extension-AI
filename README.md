@@ -1,37 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ✨ Extension AI
 
-## Getting Started
+**Extension AI** is an intelligent web application that empowers users to build fully functional Chrome Extensions using plain English prompts. Powered by advanced AI models (Gemini & Groq), it generates Manifest V3 compliant code, provides a sandboxed live preview, and packages the extension into a ready-to-load `.zip` file in seconds.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Text-to-Extension**: Describe your idea, and the AI generates `manifest.json`, background scripts, content scripts, and popup UI.
+- **Interactive Live Preview**: Test your generated extensions in a responsive browser frame (Popup, Tablet, Full Width) right from the dashboard.
+- **Conversational Iteration**: Not quite what you wanted? Use the built-in AI Copilot chat to modify and refine the generated code.
+- **Template Gallery**: Start fast by choosing from 20+ curated extension templates across categories like Productivity, Dev Tools, and Social Media.
+- **Community Sharing**: Publish your extensions to the public gallery, upvote community creations, and clone them with one click.
+- **One-Click Download**: Instantly download your generated code as a packaged `.zip` file, ready to drop into `chrome://extensions/`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Technology Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: React (Vite), Tailwind CSS, Framer Motion, React Router
+- **Backend**: Node.js, Express
+- **Database**: MongoDB (Mongoose)
+- **AI Integration**: Google Gemini 2.0 Flash, Groq (Llama 3.3)
+- **Deployment**: Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ⚙️ Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js (v18+)
+- MongoDB connection URI
+- API Keys for Gemini and/or Groq
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/vardhan23v/extension-AI.git
+   cd extension-AI
+   ```
 
-## Deploy on Vercel
+2. **Setup Backend**
+   ```bash
+   cd backend
+   npm install
+   ```
+   Create a `.env` file in the `backend` directory:
+   ```env
+   PORT=5050
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   GEMINI_API_KEY=your_gemini_api_key
+   GROQ_API_KEY=your_groq_api_key
+   ```
+   Start the backend server:
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Setup Frontend**
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+   Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-// Extension AI - Project initialized
+4. **Open in Browser**
+   Navigate to `http://localhost:5173` to start building extensions!
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/vardhan23v/extension-AI/issues).
+
+## 📄 License
+
+This project is licensed under the MIT License.
