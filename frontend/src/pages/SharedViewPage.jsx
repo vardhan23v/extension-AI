@@ -18,20 +18,19 @@ const SharedViewPage = () => {
   const [activeTab, setActiveTab] = useState('preview');
 
   useEffect(() => {
+    const fetchSharedExtension = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/extensions/shared/${id}`);
+        setExtension(response.data.extension);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Extension not found or not public.');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchSharedExtension();
   }, [id]);
-
-  const fetchSharedExtension = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/extensions/shared/${id}`);
-      setExtension(response.data.extension);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Extension not found or not public.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleClone = async () => {
     if (!isAuthenticated) {

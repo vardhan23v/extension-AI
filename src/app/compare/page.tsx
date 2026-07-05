@@ -42,7 +42,17 @@ export default function ComparePage() {
     finally { setLoading(false); }
   }, [slugA, slugB]);
 
-  React.useEffect(() => { fetchComparison(); }, [fetchComparison]);
+  React.useEffect(() => {
+    let active = true;
+    const load = async () => {
+      await Promise.resolve();
+      if (active) fetchComparison();
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [fetchComparison]);
 
   const swap = () => { setSlugA(slugB); setSlugB(slugA); };
 

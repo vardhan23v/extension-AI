@@ -28,13 +28,27 @@ export default function CommunityPage() {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (category !== 'all') params.set('category', category);
-    fetch(`/api/community?${params}`)
-      .then(r => r.json())
-      .then(json => setPosts(json.data || []))
-      .finally(() => setLoading(false));
+    let active = true;
+    const load = async () => {
+      await Promise.resolve();
+      if (!active) return;
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (category !== 'all') params.set('category', category);
+      try {
+        const r = await fetch(`/api/community?${params}`);
+        const json = await r.json();
+        if (active) setPosts(json.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, [category]);
 
   return (

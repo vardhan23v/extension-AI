@@ -14,20 +14,19 @@ const DashboardPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const fetchExtensions = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/extensions/my');
+        setExtensions(response.data.extensions || []);
+      } catch (err) {
+        setError('Failed to fetch extensions');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchExtensions();
   }, []);
-
-  const fetchExtensions = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/extensions/my');
-      setExtensions(response.data.extensions || []);
-    } catch (err) {
-      setError('Failed to fetch extensions');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDownload = async (extensionId) => {
     try {

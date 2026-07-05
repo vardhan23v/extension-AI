@@ -182,7 +182,7 @@ const GeneratorPage = () => {
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
                 <p className="text-gray-400">
-                  Describe your extension in plain English and click "Generate Extension" to get started.
+                  Describe your extension in plain English and click &quot;Generate Extension&quot; to get started.
                 </p>
               </div>
             )}

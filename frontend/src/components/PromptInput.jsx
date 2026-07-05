@@ -273,7 +273,7 @@ const PromptInput = forwardRef(({ onSubmit, isLoading, isModifying = false, exte
                 onChange={(e) => setEnableMonetization(e.target.checked)}
                 className="w-4 h-4 rounded text-purple-main bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus:ring-purple-main focus:ring-offset-white dark:focus:ring-offset-gray-950"
               />
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Monetization (Add "Buy me a Coffee")</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Monetization (Add &quot;Buy me a Coffee&quot;)</span>
             </label>
             {enableMonetization && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>

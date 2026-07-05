@@ -52,7 +52,15 @@ export default function SalariesPage() {
   }, [filters, page]);
 
   React.useEffect(() => {
-    fetchSalaries();
+    let active = true;
+    const load = async () => {
+      await Promise.resolve();
+      if (active) fetchSalaries();
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, [fetchSalaries]);
 
   return (

@@ -70,7 +70,7 @@ const ChatPanel = ({ extensionId, extensionTitle, onIterate, isLoading }) => {
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <Bot className="w-10 h-10 text-gray-600 mb-3" />
             <p className="text-gray-500 text-sm max-w-[220px]">
-              Describe changes you'd like to make to your extension
+              Describe changes you&apos;d like to make to your extension
             </p>
             <div className="mt-4 space-y-2 w-full">
               {[
@@ -83,7 +83,7 @@ const ChatPanel = ({ extensionId, extensionTitle, onIterate, isLoading }) => {
                   onClick={() => setInput(suggestion)}
                   className="w-full text-left text-xs px-3 py-2 rounded-lg bg-gray-800/50 text-gray-400 hover:bg-gray-800 hover:text-gray-300 transition-colors border border-gray-800/50"
                 >
-                  "{suggestion}"
+                  &quot;{suggestion}&quot;
                 </button>
               ))}
             </div>

@@ -15,20 +15,19 @@ const GalleryPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const fetchExtensions = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/extensions/gallery');
+        setExtensions(response.data.extensions || []);
+      } catch (err) {
+        setError('Failed to fetch community extensions');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchExtensions();
   }, []);
-
-  const fetchExtensions = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/extensions/gallery');
-      setExtensions(response.data.extensions || []);
-    } catch (err) {
-      setError('Failed to fetch community extensions');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleUpvote = async (id) => {
     try {
