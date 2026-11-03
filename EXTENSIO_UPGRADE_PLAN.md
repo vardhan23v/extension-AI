@@ -18,7 +18,7 @@ _Status as of 2026-11-03. Phase 1 is in progress on branch `phase1-stabilize-sup
 Prompt → extension generation, prompt "enhance", conversational iteration, AI "fix bug", AI security audit, ZIP download, dashboard list/delete, public gallery with upvote/clone, shared view page, templates page, sandboxed iframe popup preview with mocked `chrome.*`, diff viewer and version timeline (client-side).
 
 ### Unrelated / legacy code (documented, **not deleted**)
-- Repo root `package.json` (`talentdash`), `src/app/**`, `src/components/**`, `src/lib/**`, `prisma/`, `next.config.ts`, `postcss.config.mjs`, `prisma.config.ts`, `eslint.config.mjs`, `AGENTS.md`, `CLAUDE.md`: a separate Next.js salary/company-review product. Not deployed by `vercel.json`. Recommend moving to its own repository.
+- ~~Repo root Next.js "TalentDash" app (`src/`, `prisma/`, `public/`, root configs)~~ — removed 2026-11-03 (GitHub issue #1); recoverable from git history.
 - `extensio-ai/`: older duplicate of backend/frontend with Azure/Docker configs.
 - `frontend/dist/`: committed build output.
 - `add_commits.sh`, `.activity_log`: script that fabricates back-dated commits under other people's names. Recommend removing.

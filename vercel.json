@@ -18,5 +18,5 @@
       "destination": "/index.html"
     }
   ],
-  "installCommand": "npm install && npm ci --prefix backend --omit=dev"
+  "installCommand": "npm ci --prefix backend --omit=dev"
 }
