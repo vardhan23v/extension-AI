@@ -10,6 +10,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "axios": "^1.5.0",
     "framer-motion": "^12.40.0",
     "highlight.js": "^11.8.0",
@@ -32,4 +33,3 @@
     "vite": "^4.4.9"
   }
 }
-

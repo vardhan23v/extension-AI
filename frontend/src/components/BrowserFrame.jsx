@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Monitor, Smartphone, Tablet, Maximize2, Minimize2, RotateCw, ExternalLink } from 'lucide-react';
+import { Monitor, Smartphone, Tablet, Maximize2, Minimize2, RotateCw, Info } from 'lucide-react';
 
-const BrowserFrame = ({ children, extensionTitle = 'Extension', iframeSrcDoc = '' }) => {
+const BrowserFrame = ({ children, extensionTitle = 'Extension' }) => {
   const [size, setSize] = useState('popup'); // 'popup', 'tablet', 'full'
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -15,16 +15,6 @@ const BrowserFrame = ({ children, extensionTitle = 'Extension', iframeSrcDoc = '
   const handleRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
-
-  const handleOpenNewTab = useCallback(() => {
-    if (!iframeSrcDoc) return;
-    const newWindow = window.open('', '_blank');
-    if (newWindow) {
-      newWindow.document.open();
-      newWindow.document.write(iframeSrcDoc);
-      newWindow.document.close();
-    }
-  }, [iframeSrcDoc]);
 
   const sizeOptions = [
     { id: 'popup', label: 'Popup', icon: Smartphone, width: '350px' },
@@ -71,16 +61,6 @@ const BrowserFrame = ({ children, extensionTitle = 'Extension', iframeSrcDoc = '
             <RotateCw className="w-3 h-3" />
           </button>
 
-          {/* Open in new tab */}
-          {iframeSrcDoc && (
-            <button
-              onClick={handleOpenNewTab}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
-              title="Open in new tab"
-            >
-              <ExternalLink className="w-3 h-3" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -152,6 +132,11 @@ const BrowserFrame = ({ children, extensionTitle = 'Extension', iframeSrcDoc = '
           {children}
         </div>
       </motion.div>
+      <p className="mt-3 flex items-start gap-1.5 text-[11px] text-gray-500 max-w-md mx-auto">
+        <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+        Visual preview only. Chrome APIs are mocked and content scripts and the service worker do not run here — load the
+        downloaded ZIP in chrome://extensions to test real behavior.
+      </p>
     </div>
   );
 };

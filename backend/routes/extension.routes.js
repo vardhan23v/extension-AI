@@ -1,36 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth.middleware');
-const {
-  generateExtension,
-  downloadExtension,
-  iterateExtension,
-  getUserExtensions,
-  deleteExtension,
-  getPublicGallery,
-  togglePublish,
-  upvoteExtension,
-  cloneExtension,
-  debugExtension,
-  auditExtension,
-  enhancePrompt,
-  getSharedExtension
-} = require('../controllers/extension.controller');
+const { validateIdParam } = require('../middleware/validate.middleware');
+const { aiLimiter } = require('../middleware/rateLimit.middleware');
+const c = require('../controllers/extension.controller');
 
-router.post('/generate', authMiddleware, generateExtension);
-router.get('/download/:id', authMiddleware, downloadExtension);
-router.post('/iterate/:id', authMiddleware, iterateExtension);
-router.get('/my', authMiddleware, getUserExtensions);
-router.delete('/:id', authMiddleware, deleteExtension);
+const id = validateIdParam('id');
 
-// New Routes
-router.get('/gallery', getPublicGallery);
-router.post('/enhance-prompt', authMiddleware, enhancePrompt);
-router.get('/shared/:id', getSharedExtension);
-router.post('/:id/publish', authMiddleware, togglePublish);
-router.post('/:id/upvote', upvoteExtension);
-router.post('/:id/clone', authMiddleware, cloneExtension);
-router.post('/:id/debug', authMiddleware, debugExtension);
-router.post('/:id/audit', authMiddleware, auditExtension);
+router.post('/generate', authMiddleware, aiLimiter, c.generateExtension);
+router.post('/enhance-prompt', authMiddleware, aiLimiter, c.enhancePrompt);
+router.get('/my', authMiddleware, c.getUserExtensions);
+router.get('/gallery', c.getPublicGallery);
+router.get('/shared/:id', id, c.getSharedExtension);
+router.get('/download/:id', id, authMiddleware, c.downloadExtension);
+router.post('/iterate/:id', id, authMiddleware, aiLimiter, c.iterateExtension);
+
+router.get('/:id', id, authMiddleware, c.getExtension);
+router.delete('/:id', id, authMiddleware, c.deleteExtension);
+router.get('/:id/versions', id, authMiddleware, c.listVersions);
+router.post('/:id/versions/:versionId/restore', validateIdParam('id', 'versionId'), authMiddleware, c.restoreVersion);
+router.post('/:id/publish', id, authMiddleware, c.togglePublish);
+router.post('/:id/upvote', id, authMiddleware, c.upvoteExtension);
+router.post('/:id/clone', id, authMiddleware, c.cloneExtension);
+router.post('/:id/debug', id, authMiddleware, aiLimiter, c.debugExtension);
+router.post('/:id/audit', id, authMiddleware, aiLimiter, c.auditExtension);
 
 module.exports = router;

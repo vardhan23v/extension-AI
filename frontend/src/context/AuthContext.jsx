@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/axios';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const AuthContext = createContext();
 
@@ -11,62 +11,57 @@ export const useAuth = () => {
   return context;
 };
 
+const toAppUser = (user) =>
+  user ? { id: user.id, email: user.email, name: user.user_metadata?.name || user.email?.split('@')[0] || '' } : null;
+
+const notConfigured = () => {
+  throw new Error('Sign-in is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
 
-  // Initialize from localStorage
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-
-    setLoading(false);
+    if (!supabase) return undefined;
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { token, user } = response.data;
-
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-
-    setToken(token);
-    setUser(user);
-
-    return user;
+    if (!supabase) notConfigured();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return toAppUser(data.user);
   };
 
+  // Returns { user, needsConfirmation } — when email confirmation is enabled
+  // in Supabase there is no session until the user clicks the email link.
   const register = async (name, email, password) => {
-    const response = await api.post('/auth/register', { name, email, password });
-    const { token, user } = response.data;
-
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-
-    setToken(token);
-    setUser(user);
-
-    return user;
+    if (!supabase) notConfigured();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name }, emailRedirectTo: `${window.location.origin}/login` },
+    });
+    if (error) throw error;
+    return { user: toAppUser(data.user), needsConfirmation: !data.session };
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setSession(null);
   };
 
   const value = {
-    user,
-    token,
+    user: toAppUser(session?.user),
+    token: session?.access_token || null,
     loading,
-    isAuthenticated: !!token,
+    isAuthenticated: !!session,
     login,
     register,
     logout,

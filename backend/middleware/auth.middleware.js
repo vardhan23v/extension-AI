@@ -1,20 +1,22 @@
-const jwt = require('jsonwebtoken');
+const { getSupabase } = require('../services/supabase');
 
-const authMiddleware = (req, res, next) => {
+// Verifies a Supabase Auth access token and exposes the user as req.user.
+const authMiddleware = async (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  if (!token) {
+    return res.status(401).json({ message: 'Please sign in' });
+  }
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+    const { data, error } = await getSupabase().auth.getUser(token);
+    if (error || !data?.user) {
+      return res.status(401).json({ message: 'Your session has expired. Please sign in again.' });
     }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    req.user = { userId: data.user.id, email: data.user.email, name: data.user.user_metadata?.name || '' };
     next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+  } catch (err) {
+    next(err);
   }
 };
 
 module.exports = authMiddleware;
-// Auth middleware setup

@@ -1,70 +1,75 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
 const authRoutes = require('./routes/auth.routes');
 const extensionRoutes = require('./routes/extension.routes');
 const userRoutes = require('./routes/user.routes');
+const { apiLimiter } = require('./middleware/rateLimit.middleware');
+const extensionsRepo = require('./repositories/extensions.repo');
 
 const app = express();
+app.set('trust proxy', 1);
 
-// Middleware
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const isDev = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
+
+app.use(helmet());
 app.use(
   cors({
-    origin: function(origin, callback) {
-      // Allow same-origin requests (no origin header), Vercel preview URLs, and localhost
-      if (!origin || origin.includes('.vercel.app') || origin.includes('localhost')) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Allow all for now - tighten in production if needed
-      }
+    origin(origin, callback) {
+      // No Origin header = same-origin or non-browser request.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (isDev && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      return callback(null, false);
     },
-    credentials: true,
   })
 );
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// MongoDB Connection - Fixed with IPv4
-mongoose
-  .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 10000,
-    family: 4,
-  })
-  .then(() => console.log('✓ MongoDB connected'))
-  .catch((err) => {
-    console.error('✗ MongoDB connection error:', err.message);
-    // Don't process.exit in serverless - let requests attempt to reconnect
-  });
+app.use(express.json({ limit: '2mb' }));
+app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/extensions', extensionRoutes);
 app.use('/api/user', userRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err : {},
-  });
-});
+const health = async (req, res) => {
+  let database = 'unconfigured';
+  try {
+    database = (await extensionsRepo.ping()) ? 'ok' : 'error';
+  } catch {
+    database = 'unconfigured';
+  }
+  res.status(database === 'ok' ? 200 : 503).json({ status: database === 'ok' ? 'ok' : 'degraded', database });
+};
+app.get('/health', health);
+app.get('/api/health', health);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
+// Global error handler: client errors keep their message, server errors are generic.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') return res.status(413).json({ message: 'Request is too large' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'Invalid JSON body' });
+  const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
+  if (status >= 500) console.error('Server error:', err.message);
+  res.status(status).json({
+    message: status < 500 ? err.message : status === 503 ? 'Service temporarily unavailable' : 'Something went wrong. Please try again.',
+  });
+});
+
 const PORT = process.env.PORT || 5050;
 
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+if (require.main === module && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`✓ Server running on port ${PORT}`);
   });

@@ -1,543 +1,309 @@
-const Extension = require('../models/Extension.model');
-const { generateExtensionFiles, auditExtensionCode } = require('../services/gemini.service');
-const { sanitizeFiles } = require('../utils/sanitize');
-const { createZip, cleanupZip } = require('../services/zipper.service');
-const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
-const path = require('path');
+const repo = require('../repositories/extensions.repo');
+const { generateExtension: runGeneration, editExtension, enhancePrompt: runEnhance, GenerationError } = require('../services/generation.service');
+const { auditExtension: runAudit } = require('../services/security/audit.service');
+const { createZipBuffer } = require('../services/zipper.service');
+const { safeDownloadName } = require('../utils/sanitize');
+const { parseOptionalHttpsUrl, requireText } = require('../middleware/validate.middleware');
 
-const generateExtension = async (req, res) => {
+const MAX_PROMPT = 4000;
+const LANGUAGE_RE = /^[a-z]{2}(_[A-Z]{2})?$/;
+
+const toClient = (ext) => ({
+  id: ext.id,
+  title: ext.title,
+  prompt: ext.prompt,
+  storeAssets: ext.store_assets || {},
+  files: ext.files,
+  isPublic: ext.is_public,
+  iterationHistory: ext.iteration_history || [],
+  createdAt: ext.created_at,
+  updatedAt: ext.updated_at,
+});
+
+const generationMeta = (result) => ({
+  provider: result.provider,
+  summary: result.summary,
+  warnings: result.validation.warnings,
+  repaired: result.repaired,
+});
+
+const handleGenerationError = (err, res, next) => {
+  if (err instanceof GenerationError) {
+    return res.status(err.status).json({ message: err.message, ...(err.details || {}) });
+  }
+  return next(err);
+};
+
+const generateExtension = async (req, res, next) => {
   try {
-    const { prompt, monetizationLink, webhookUrl, languages } = req.body;
-    const userId = req.user.userId;
+    const prompt = requireText(req.body.prompt, 'a prompt', MAX_PROMPT);
+    const monetizationLink = parseOptionalHttpsUrl(req.body.monetizationLink, 'Monetization link');
+    const webhookUrl = parseOptionalHttpsUrl(req.body.webhookUrl, 'Webhook URL');
+    const languages = Array.isArray(req.body.languages)
+      ? req.body.languages.filter((l) => typeof l === 'string' && LANGUAGE_RE.test(l)).slice(0, 10)
+      : [];
 
-    if (!prompt || prompt.trim().length === 0) {
-      return res.status(400).json({ message: 'Please provide a prompt' });
-    }
+    const result = await runGeneration(prompt, { monetizationLink, webhookUrl, languages });
 
-    // Call Gemini AI
-    let aiResponse;
-    try {
-      aiResponse = await generateExtensionFiles(prompt, { monetizationLink, webhookUrl, languages });
-    } catch (aiError) {
-      return res.status(400).json({ message: aiError.message });
-    }
-
-    // Sanitize files
-    let sanitizedFiles;
-    try {
-      sanitizedFiles = sanitizeFiles(aiResponse.files);
-    } catch (sanitizeError) {
-      return res.status(400).json({ message: sanitizeError.message });
-    }
-
-    // Create zip
-    const extensionId = uuidv4();
-    let zipPath;
-    try {
-      zipPath = await createZip(extensionId, sanitizedFiles);
-    } catch (zipError) {
-      return res.status(500).json({ message: 'Failed to create zip file', error: zipError.message });
-    }
-
-    // Generate Store Assets URLs using Pollinations.ai (free, open API)
-    const encodedTitle = encodeURIComponent(aiResponse.title);
-    const logoUrl = `https://image.pollinations.ai/prompt/Flat%20minimalist%20logo%20for%20chrome%20extension%20called%20${encodedTitle}?width=128&height=128&nologo=true`;
-    const bannerUrl = `https://image.pollinations.ai/prompt/Promo%20banner%20for%20chrome%20extension%20${encodedTitle}%20modern%20tech%20background?width=440&height=280&nologo=true`;
-
-    // Save to MongoDB
-    const extension = new Extension({
-      userId,
-      title: aiResponse.title,
+    const ext = await repo.create({
+      user_id: req.user.userId,
+      title: result.title,
       prompt,
-      files: sanitizedFiles,
-      zipPath,
-      monetizationLink: monetizationLink || null,
-      storeAssets: {
-        logoUrl,
-        bannerUrl,
-        description: aiResponse.storeDescription || 'A powerful Chrome Extension.'
-      },
-      iterationHistory: [{ prompt, timestamp: new Date() }],
+      files: result.files,
+      monetization_link: monetizationLink,
+      store_assets: { description: result.storeDescription || '' },
+      iteration_history: [{ prompt, timestamp: new Date().toISOString() }],
     });
 
-    await extension.save();
-
-    res.status(201).json({
-      success: true,
-      extension: {
-        id: extension._id,
-        title: extension.title,
-        storeAssets: extension.storeAssets,
-        files: sanitizedFiles.map((f) => ({
-          filename: f.filename,
-          content: f.content,
-        })),
-        iterationHistory: extension.iterationHistory,
-        createdAt: extension.createdAt,
-      },
-    });
-  } catch (error) {
-    console.error('Generate extension error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(201).json({ success: true, extension: toClient(ext), generation: generationMeta(result) });
+  } catch (err) {
+    handleGenerationError(err, res, next);
   }
 };
 
-const downloadExtension = async (req, res) => {
+const downloadExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
 
-    const extension = await Extension.findById(id);
-    if (!extension) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
-
-    if (extension.userId.toString() !== userId) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
-
-    // Recreate zip if needed
-    let zipPath = extension.zipPath;
-    if (!zipPath || !fs.existsSync(zipPath)) {
-      zipPath = await createZip(id, extension.files);
-      extension.zipPath = zipPath;
-      await extension.save();
-    }
-
-    // Send file
-    res.download(zipPath, `${extension.title}-extension.zip`, (err) => {
-      if (err && err.code !== 'ERR_HTTP_HEADERS_SENT') {
-        console.error('Download error:', err);
-      }
+    const zip = await createZipBuffer(ext.files);
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${safeDownloadName(ext.title)}-extension.zip"`,
+      'Content-Length': zip.length,
     });
-  } catch (error) {
-    console.error('Download extension error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.send(zip);
+  } catch (err) {
+    next(err);
   }
 };
 
-const iterateExtension = async (req, res) => {
+// Shared flow for conversational edits and debug fixes: snapshot, edit, save.
+const applyEdit = (kind) => async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { prompt: newPrompt } = req.body;
-    const userId = req.user.userId;
+    const instruction =
+      kind === 'debug'
+        ? requireText(req.body.errorMessage, 'the error message', MAX_PROMPT)
+        : requireText(req.body.prompt, 'a modification prompt', MAX_PROMPT);
 
-    if (!newPrompt || newPrompt.trim().length === 0) {
-      return res.status(400).json({ message: 'Please provide a modification prompt' });
-    }
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
 
-    const extension = await Extension.findById(id);
-    if (!extension) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
+    const result = await editExtension(ext, instruction, { kind });
 
-    if (extension.userId.toString() !== userId) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
+    const historyPrompt = kind === 'debug' ? `DEBUG: ${instruction}` : instruction;
+    await repo.addVersion(ext.id, ext.files, `Before: ${historyPrompt.slice(0, 200)}`);
+    const updated = await repo.updateOwned(ext.id, req.user.userId, {
+      title: result.title,
+      files: result.files,
+      iteration_history: [...(ext.iteration_history || []), { prompt: historyPrompt, timestamp: new Date().toISOString() }],
+    });
 
-    // Build combined prompt
-    const combinedPrompt = `Original: "${extension.prompt}". Now modify it: "${newPrompt}"`;
+    res.status(200).json({ success: true, extension: toClient(updated), generation: generationMeta(result) });
+  } catch (err) {
+    handleGenerationError(err, res, next);
+  }
+};
 
-    // Call Gemini AI with combined prompt
-    let aiResponse;
-    try {
-      aiResponse = await generateExtensionFiles(combinedPrompt);
-    } catch (aiError) {
-      return res.status(400).json({ message: aiError.message });
-    }
+const getExtension = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    res.json({ success: true, extension: toClient(ext) });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    // Sanitize files
-    let sanitizedFiles;
-    try {
-      sanitizedFiles = sanitizeFiles(aiResponse.files);
-    } catch (sanitizeError) {
-      return res.status(400).json({ message: sanitizeError.message });
-    }
-
-    // Create new zip
-    const newZipPath = await createZip(id, sanitizedFiles);
-
-    // Clean up old zip
-    if (extension.zipPath && fs.existsSync(extension.zipPath)) {
-      cleanupZip(extension.zipPath);
-    }
-
-    // Update extension
-    extension.title = aiResponse.title;
-    extension.files = sanitizedFiles;
-    extension.zipPath = newZipPath;
-    extension.iterationHistory.push({ prompt: newPrompt, timestamp: new Date() });
-    await extension.save();
-
+const getUserExtensions = async (req, res, next) => {
+  try {
+    const rows = await repo.listByUser(req.user.userId, { limit: 100 });
     res.status(200).json({
       success: true,
-      extension: {
-        id: extension._id,
-        title: extension.title,
-        storeAssets: extension.storeAssets,
-        files: sanitizedFiles.map((f) => ({
-          filename: f.filename,
-          content: f.content,
-        })),
-        iterationHistory: extension.iterationHistory,
-        updatedAt: extension.updatedAt,
-      },
-    });
-  } catch (error) {
-    console.error('Iterate extension error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-const getUserExtensions = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    const extensions = await Extension.find({ userId }).sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      extensions: extensions.map((ext) => ({
-        id: ext._id,
+      extensions: rows.map((ext) => ({
+        id: ext.id,
         title: ext.title,
         prompt: ext.prompt,
-        fileCount: ext.files.length,
-        createdAt: ext.createdAt,
-        updatedAt: ext.updatedAt,
+        fileCount: Array.isArray(ext.files) ? ext.files.length : 0,
+        isPublic: ext.is_public,
+        createdAt: ext.created_at,
+        updatedAt: ext.updated_at,
       })),
     });
-  } catch (error) {
-    console.error('Get user extensions error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 
-const deleteExtension = async (req, res) => {
+const deleteExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+    const removed = await repo.removeOwned(req.params.id, req.user.userId);
+    if (!removed) return res.status(404).json({ message: 'Extension not found' });
+    res.status(200).json({ success: true, message: 'Extension deleted' });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    const extension = await Extension.findById(id);
-    if (!extension) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
+const listVersions = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const versions = await repo.listVersions(ext.id);
+    res.json({ success: true, versions: versions.map((v) => ({ id: v.id, note: v.note, createdAt: v.created_at })) });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    if (extension.userId.toString() !== userId) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
+const restoreVersion = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const version = await repo.findVersion(ext.id, req.params.versionId);
+    if (!version) return res.status(404).json({ message: 'Version not found' });
 
-    // Clean up zip file
-    if (extension.zipPath && fs.existsSync(extension.zipPath)) {
-      cleanupZip(extension.zipPath);
-    }
-
-    await Extension.findByIdAndDelete(id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Extension deleted',
+    await repo.addVersion(ext.id, ext.files, 'Before restore');
+    const updated = await repo.updateOwned(ext.id, req.user.userId, {
+      files: version.files,
+      iteration_history: [...(ext.iteration_history || []), { prompt: 'Restored an earlier version', timestamp: new Date().toISOString() }],
     });
-  } catch (error) {
-    console.error('Delete extension error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.json({ success: true, extension: toClient(updated) });
+  } catch (err) {
+    next(err);
   }
 };
 
-const getPublicGallery = async (req, res) => {
+const getPublicGallery = async (req, res, next) => {
   try {
-    const extensions = await Extension.find({ isPublic: true })
-      .sort({ upvotes: -1, createdAt: -1 })
-      .populate('userId', 'username')
-      .limit(50);
-
+    const rows = await repo.listPublic({ limit: 50 });
     res.status(200).json({
       success: true,
-      extensions: extensions.map(ext => ({
-        id: ext._id,
+      extensions: rows.map((ext) => ({
+        id: ext.id,
         title: ext.title,
         prompt: ext.prompt,
-        storeAssets: ext.storeAssets,
+        storeAssets: ext.store_assets || {},
         upvotes: ext.upvotes,
-        cloneCount: ext.cloneCount,
-        createdAt: ext.createdAt,
-      }))
+        cloneCount: ext.clone_count,
+        createdAt: ext.created_at,
+      })),
     });
-  } catch (error) {
-    console.error('Gallery error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 
-const togglePublish = async (req, res) => {
+const togglePublish = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    const extension = await Extension.findById(id);
-    if (!extension || extension.userId.toString() !== userId) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
-
-    extension.isPublic = !extension.isPublic;
-    await extension.save();
-
-    res.status(200).json({ success: true, isPublic: extension.isPublic });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const updated = await repo.updateOwned(ext.id, req.user.userId, { is_public: !ext.is_public });
+    res.status(200).json({ success: true, isPublic: updated.is_public });
+  } catch (err) {
+    next(err);
   }
 };
 
-const upvoteExtension = async (req, res) => {
+const upvoteExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const extension = await Extension.findById(id);
-    if (!extension || !extension.isPublic) {
-      return res.status(404).json({ message: 'Extension not found' });
+    const count = await repo.upvote(req.params.id, req.user.userId);
+    if (count === null || count === undefined) {
+      const ext = await repo.findById(req.params.id);
+      if (!ext || !ext.is_public) return res.status(404).json({ message: 'Extension not found' });
+      return res.status(409).json({ message: 'You already upvoted this extension', upvotes: ext.upvotes });
     }
-
-    extension.upvotes += 1;
-    await extension.save();
-
-    res.status(200).json({ success: true, upvotes: extension.upvotes });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(200).json({ success: true, upvotes: count });
+  } catch (err) {
+    next(err);
   }
 };
 
-const cloneExtension = async (req, res) => {
+const cloneExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+    const source = await repo.findById(req.params.id);
+    if (!source || !source.is_public) return res.status(404).json({ message: 'Extension not found' });
 
-    const sourceExtension = await Extension.findById(id);
-    if (!sourceExtension || !sourceExtension.isPublic) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
-
-    // Increment clone count on source
-    sourceExtension.cloneCount += 1;
-    await sourceExtension.save();
-
-    // Create a deep copy of files for the new zip
-    const newFiles = sourceExtension.files.map(f => ({
-      filename: f.filename,
-      content: f.content
-    }));
-
-    const extensionId = uuidv4();
-    const zipPath = await createZip(extensionId, newFiles);
-
-    const clonedExtension = new Extension({
-      userId,
-      title: sourceExtension.title + ' (Clone)',
-      prompt: sourceExtension.prompt,
-      files: newFiles,
-      zipPath,
-      monetizationLink: sourceExtension.monetizationLink,
-      storeAssets: sourceExtension.storeAssets,
-      iterationHistory: [{ prompt: 'Cloned from Gallery', timestamp: new Date() }],
+    const clone = await repo.create({
+      user_id: req.user.userId,
+      title: `${source.title} (Clone)`.slice(0, 200),
+      prompt: source.prompt,
+      files: source.files,
+      store_assets: source.store_assets || {},
+      iteration_history: [{ prompt: 'Cloned from Gallery', timestamp: new Date().toISOString() }],
     });
+    await repo.incrementCloneCount(source.id);
 
-    await clonedExtension.save();
-
-    res.status(201).json({ success: true, extensionId: clonedExtension._id });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(201).json({ success: true, extensionId: clone.id });
+  } catch (err) {
+    next(err);
   }
 };
 
-const debugExtension = async (req, res) => {
+const auditExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { errorMessage } = req.body;
-    const userId = req.user.userId;
-
-    if (!errorMessage || errorMessage.trim().length === 0) {
-      return res.status(400).json({ message: 'Please provide the error message' });
-    }
-
-    const extension = await Extension.findById(id);
-    if (!extension || extension.userId.toString() !== userId) {
-      return res.status(404).json({ message: 'Extension not found' });
-    }
-
-    // Pass the existing code + error to the AI
-    const combinedPrompt = `Original prompt: "${extension.prompt}". 
-The generated code threw this error: "${errorMessage}". 
-Please fix the code files to resolve this error.`;
-
-    let aiResponse = await generateExtensionFiles(combinedPrompt, { monetizationLink: extension.monetizationLink });
-    let sanitizedFiles = sanitizeFiles(aiResponse.files);
-    
-    const newZipPath = await createZip(id, sanitizedFiles);
-
-    if (extension.zipPath && fs.existsSync(extension.zipPath)) cleanupZip(extension.zipPath);
-
-    extension.title = aiResponse.title;
-    extension.files = sanitizedFiles;
-    extension.zipPath = newZipPath;
-    extension.iterationHistory.push({ prompt: 'DEBUG: ' + errorMessage, timestamp: new Date() });
-    
-    await extension.save();
-    res.status(200).json({
-      success: true,
-      extension: {
-        id: extension._id,
-        title: extension.title,
-        files: sanitizedFiles.map((f) => ({ filename: f.filename, content: f.content })),
-        iterationHistory: extension.iterationHistory,
-        updatedAt: extension.updatedAt,
-      },
-    });
-  } catch (error) {
-    console.error('Debug extension error:', error);
-    res.status(400).json({ message: error.message || 'Failed to auto-fix bug due to AI provider error' });
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const audit = await runAudit(ext.files);
+    res.status(200).json({ success: true, audit });
+  } catch (err) {
+    next(err);
   }
 };
 
-const auditExtension = async (req, res) => {
+const enhancePrompt = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    const extension = await Extension.findById(id);
-    if (!extension) {
-      return res.status(404).json({ message: 'Extension not found' });
+    const prompt = requireText(req.body.prompt, 'a prompt to enhance', MAX_PROMPT);
+    let enhancedPrompt;
+    try {
+      enhancedPrompt = await runEnhance(prompt);
+    } catch (e) {
+      console.error('Enhance prompt failed:', e.message);
+      return res.status(502).json({ message: 'Failed to enhance prompt. Please try again.' });
     }
-
-    if (extension.userId.toString() !== userId && !extension.isPublic) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
-
-    const auditResult = await auditExtensionCode(extension.files);
-
-    res.status(200).json({
-      success: true,
-      audit: auditResult
-    });
-  } catch (error) {
-    console.error('Audit error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-const enhancePrompt = async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    if (!prompt || prompt.trim().length === 0) {
-      return res.status(400).json({ message: 'Please provide a prompt to enhance' });
-    }
-
-    const systemPrompt = `You are an expert Chrome Extension product designer. The user has written a brief description of a Chrome extension they want to build. Your job is to expand it into a detailed, high-quality prompt that will produce a better extension.
-
-Rules:
-1. Keep the user's original intent intact.
-2. Add specific UI details (popup layout, colors, components).
-3. Add functional details (what APIs to use, storage, permissions).
-4. Add UX details (animations, loading states, error handling).
-5. Keep it to 8-12 bullet points maximum.
-6. Output ONLY the enhanced prompt text, no explanation, no markdown formatting, no quotes.`;
-
-    let enhancedPrompt = null;
-
-    // Try Groq first
-    if (process.env.GROQ_API_KEY) {
-      try {
-        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `Enhance this Chrome extension prompt:\n"${prompt}"` }
-            ],
-            max_tokens: 1000
-          })
-        });
-        const data = await groqResponse.json();
-        if (groqResponse.ok && data.choices && data.choices[0]) {
-          enhancedPrompt = data.choices[0].message.content.trim();
-        }
-      } catch (e) {
-        console.error('Groq enhance failed:', e.message);
-      }
-    }
-
-    // Fallback to Gemini
-    if (!enhancedPrompt && process.env.GEMINI_API_KEY) {
-      try {
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
-        const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
-        const response = await model.generateContent(`${systemPrompt}\n\nEnhance this Chrome extension prompt:\n"${prompt}"`);
-        enhancedPrompt = response.response.text().trim();
-      } catch (e) {
-        console.error('Gemini enhance failed:', e.message);
-      }
-    }
-
-    if (!enhancedPrompt) {
-      return res.status(500).json({ message: 'Failed to enhance prompt. Please try again.' });
-    }
-
-    // Clean up any quotes wrapping the response
-    enhancedPrompt = enhancedPrompt.replace(/^["']|["']$/g, '').trim();
-
     res.status(200).json({ success: true, enhancedPrompt });
-  } catch (error) {
-    console.error('Enhance prompt error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 
-const getSharedExtension = async (req, res) => {
+const getSharedExtension = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    const extension = await Extension.findById(id);
-    if (!extension || !extension.isPublic) {
-      return res.status(404).json({ message: 'Extension not found or not public' });
-    }
-
+    const ext = await repo.findById(req.params.id);
+    if (!ext || !ext.is_public) return res.status(404).json({ message: 'Extension not found or not public' });
     res.status(200).json({
       success: true,
       extension: {
-        id: extension._id,
-        title: extension.title,
-        prompt: extension.prompt,
-        storeAssets: extension.storeAssets,
-        files: extension.files.map((f) => ({
-          filename: f.filename,
-          content: f.content,
-        })),
-        upvotes: extension.upvotes,
-        cloneCount: extension.cloneCount,
-        createdAt: extension.createdAt,
+        id: ext.id,
+        title: ext.title,
+        prompt: ext.prompt,
+        storeAssets: ext.store_assets || {},
+        files: ext.files,
+        upvotes: ext.upvotes,
+        cloneCount: ext.clone_count,
+        createdAt: ext.created_at,
       },
     });
-  } catch (error) {
-    console.error('Get shared extension error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 
 module.exports = {
   generateExtension,
   downloadExtension,
-  iterateExtension,
+  iterateExtension: applyEdit('edit'),
+  debugExtension: applyEdit('debug'),
+  getExtension,
   getUserExtensions,
   deleteExtension,
+  listVersions,
+  restoreVersion,
   getPublicGallery,
   togglePublish,
   upvoteExtension,
   cloneExtension,
-  debugExtension,
   auditExtension,
   enhancePrompt,
-  getSharedExtension
+  getSharedExtension,
 };

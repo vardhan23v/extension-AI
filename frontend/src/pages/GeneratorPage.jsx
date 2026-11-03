@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import api from '../api/axios';
+import api, { AI_TIMEOUT } from '../api/axios';
 import PromptInput from '../components/PromptInput';
 import FilePreview from '../components/FilePreview';
 import ProgressStepper from '../components/ProgressStepper';
@@ -27,6 +27,40 @@ import {
   ShieldCheck,
   Link2,
 } from 'lucide-react';
+
+// Turns API errors (including validator output) into a readable message.
+const describeError = (err, fallback) => {
+  const data = err.response?.data;
+  if (err.code === 'ECONNABORTED') return 'The request timed out. The AI provider may be busy — please try again.';
+  if (!data) return err.message || fallback;
+  const first = Array.isArray(data.errors) && data.errors.length ? `\n• ${data.errors.slice(0, 3).join('\n• ')}` : '';
+  return `${data.message || fallback}${first}`;
+};
+
+const showValidationWarnings = (generation) => {
+  const warnings = generation?.warnings || [];
+  if (warnings.length) {
+    toast(`${warnings.length} validation warning${warnings.length > 1 ? 's' : ''}:\n• ${warnings.slice(0, 3).join('\n• ')}`, {
+      icon: '⚠️',
+      duration: 8000,
+    });
+  }
+};
+
+const SEVERITY_STYLES = {
+  critical: 'bg-red-500/15 text-red-300 border-red-500/30',
+  high: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+  medium: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  low: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+  info: 'bg-gray-500/15 text-gray-300 border-gray-500/30',
+};
+
+const AUDIT_STATUS = {
+  passed: { label: 'Passed automated checks', box: 'bg-green-900/20 border-green-800', text: 'text-green-300' },
+  findings: { label: 'Findings detected', box: 'bg-amber-900/20 border-amber-800', text: 'text-amber-300' },
+  incomplete: { label: 'Audit incomplete', box: 'bg-gray-800/40 border-gray-700', text: 'text-gray-200' },
+  failed: { label: 'Audit failed', box: 'bg-red-900/20 border-red-800', text: 'text-red-300' },
+};
 
 const GeneratorPage = () => {
   const navigate = useNavigate();
@@ -64,15 +98,16 @@ const GeneratorPage = () => {
         setStatusMessage((prev) => (prev ? 'Packaging your extension...' : prev));
       }, 8000);
 
-      const response = await api.post('/extensions/generate', { prompt, ...options });
+      const response = await api.post('/extensions/generate', { prompt, ...options }, { timeout: AI_TIMEOUT });
       setGeneratedExtension(response.data.extension);
-      toast.success('Extension generated successfully!');
+      setSecurityAudit(null);
+      toast.success('Extension generated and validated!');
+      showValidationWarnings(response.data.generation);
       setStatusMessage('');
       setFilesEdited(false);
       setActiveTab('preview');
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to generate extension';
-      toast.error(errorMsg);
+      toast.error(describeError(err, 'Failed to generate extension'), { duration: 8000 });
       setStatusMessage('');
     } finally {
       setIsLoading(false);
@@ -97,9 +132,11 @@ const GeneratorPage = () => {
     setStatusMessage('Applying modifications...');
 
     try {
-      const response = await api.post(`/extensions/iterate/${generatedExtension.id}`, {
-        prompt: newPrompt,
-      });
+      const response = await api.post(
+        `/extensions/iterate/${generatedExtension.id}`,
+        { prompt: newPrompt },
+        { timeout: AI_TIMEOUT }
+      );
 
       const ext = response.data.extension;
       setGeneratedExtension(ext);
@@ -110,8 +147,7 @@ const GeneratorPage = () => {
 
       if (callback) callback(ext);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to iterate extension';
-      toast.error(errorMsg);
+      toast.error(describeError(err, 'Failed to modify extension'), { duration: 8000 });
       setStatusMessage('');
       if (callback) callback(null);
     } finally {
@@ -154,15 +190,17 @@ const GeneratorPage = () => {
     setStatusMessage('Auto-fixing code based on error...');
 
     try {
-      const response = await api.post(`/extensions/${generatedExtension.id}/debug`, {
-        errorMessage: debugError,
-      });
+      const response = await api.post(
+        `/extensions/${generatedExtension.id}/debug`,
+        { errorMessage: debugError },
+        { timeout: AI_TIMEOUT }
+      );
       setGeneratedExtension(response.data.extension);
       toast.success('Bug fixed automatically!');
       setDebugError('');
       setActiveTab('code');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to auto-fix bug');
+      toast.error(describeError(err, 'Failed to auto-fix bug'), { duration: 8000 });
     } finally {
       setIsLoading(false);
       setStatusMessage('');
@@ -191,11 +229,12 @@ const GeneratorPage = () => {
     if (!generatedExtension) return;
     setIsAuditing(true);
     try {
-      const response = await api.post(`/extensions/${generatedExtension.id}/audit`);
+      const response = await api.post(`/extensions/${generatedExtension.id}/audit`, null, { timeout: AI_TIMEOUT });
       setSecurityAudit(response.data.audit);
       toast.success('Audit complete');
     } catch (err) {
-      toast.error('Audit failed');
+      setSecurityAudit(null);
+      toast.error(describeError(err, 'Audit could not run — the extension has NOT been reviewed'));
     } finally {
       setIsAuditing(false);
     }
@@ -575,7 +614,7 @@ const GeneratorPage = () => {
                   )}
 
                   {activeTab === 'preview' && (
-                    <BrowserFrame extensionTitle={generatedExtension.title} iframeSrcDoc={getIframeSource()}>
+                    <BrowserFrame extensionTitle={generatedExtension.title}>
                       <iframe
                         title="Extension Preview"
                         srcDoc={getIframeSource()}
@@ -602,6 +641,7 @@ const GeneratorPage = () => {
 
                   {activeTab === 'store' && generatedExtension.storeAssets && (
                     <div className="space-y-6">
+                      {generatedExtension.storeAssets.bannerUrl && (
                       <div className="h-48 w-full rounded-xl overflow-hidden relative border border-gray-700">
                         <img
                           src={generatedExtension.storeAssets.bannerUrl}
@@ -616,6 +656,7 @@ const GeneratorPage = () => {
                           />
                         </div>
                       </div>
+                      )}
                       <div className="pt-8">
                         <h4 className="text-white font-bold mb-2">Store Description</h4>
                         <p className="text-gray-400 text-sm bg-gray-900/50 p-4 rounded-lg border border-gray-800">
@@ -639,35 +680,62 @@ const GeneratorPage = () => {
                       </div>
                       
                       {!securityAudit && !isAuditing && (
-                        <p className="text-gray-400 text-sm">Run an AI security audit to check for excessive permissions and bad practices.</p>
+                        <p className="text-gray-400 text-sm">Run automated security checks (permissions, remote code, unsafe DOM use, exposed keys) with an AI explanation.</p>
                       )}
                       
                       {securityAudit && (
                         <div className="space-y-4">
-                          <div className={`p-6 rounded-xl border ${securityAudit.score >= 80 ? 'bg-green-900/20 border-green-800' : 'bg-red-900/20 border-red-800'}`}>
-                            <div className="flex items-center gap-4">
-                              <div className={`text-4xl font-extrabold ${securityAudit.score >= 80 ? 'text-green-400' : 'text-red-400'}`}>
-                                {securityAudit.score}/100
-                              </div>
-                              <div>
-                                <h5 className={`font-bold ${securityAudit.score >= 80 ? 'text-green-300' : 'text-red-300'}`}>
-                                  {securityAudit.isSafe ? 'Looks Safe' : 'Security Risks Detected'}
-                                </h5>
-                                <p className="text-sm text-gray-400 mt-1">Based on Manifest V3 best practices.</p>
-                              </div>
-                            </div>
+                          <div className={`p-5 rounded-xl border ${(AUDIT_STATUS[securityAudit.status] || AUDIT_STATUS.failed).box}`}>
+                            <h5 className={`font-bold ${(AUDIT_STATUS[securityAudit.status] || AUDIT_STATUS.failed).text}`}>
+                              {(AUDIT_STATUS[securityAudit.status] || AUDIT_STATUS.failed).label}
+                            </h5>
+                            <p className="text-sm text-gray-400 mt-1">
+                              Static checks: {securityAudit.checks?.static || 'unknown'} · AI review: {securityAudit.checks?.ai || 'unknown'}
+                            </p>
+                            {securityAudit.status === 'incomplete' && (
+                              <p className="text-sm text-gray-300 mt-2">
+                                The AI review could not be completed. Static checks found no issues, but the extension has not been fully reviewed.
+                              </p>
+                            )}
+                            {securityAudit.message && <p className="text-sm text-gray-300 mt-2">{securityAudit.message}</p>}
                           </div>
-                          
-                          {securityAudit.warnings && securityAudit.warnings.length > 0 && (
-                            <div className="space-y-2 mt-4">
-                              <h5 className="text-white font-semibold text-sm">Warnings:</h5>
-                              <ul className="list-disc pl-5 space-y-1">
-                                {securityAudit.warnings.map((warn, i) => (
-                                  <li key={i} className="text-amber-400 text-sm">{warn}</li>
-                                ))}
-                              </ul>
+
+                          {securityAudit.aiSummary && (
+                            <div className="p-4 rounded-xl border border-gray-800 bg-gray-900/50">
+                              <h5 className="text-white font-semibold text-sm mb-1">AI explanation</h5>
+                              <p className="text-sm text-gray-300">{securityAudit.aiSummary}</p>
+                              {securityAudit.aiConcerns?.length > 0 && (
+                                <ul className="list-disc pl-5 mt-2 space-y-1">
+                                  {securityAudit.aiConcerns.map((c, i) => (
+                                    <li key={i} className="text-sm text-gray-400">{c}</li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           )}
+
+                          {securityAudit.findings?.length > 0 && (
+                            <ul className="space-y-2">
+                              {securityAudit.findings.map((f, i) => (
+                                <li key={i} className="p-3 rounded-lg border border-gray-800 bg-gray-900/40">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-[11px] uppercase font-bold px-2 py-0.5 rounded border ${SEVERITY_STYLES[f.severity] || SEVERITY_STYLES.info}`}>
+                                      {f.severity}
+                                    </span>
+                                    <span className="text-sm text-white">{f.message}</span>
+                                  </div>
+                                  {f.file && (
+                                    <p className="text-xs text-gray-500 font-mono mt-1">
+                                      {f.file}{f.line ? `:${f.line}` : ''}
+                                    </p>
+                                  )}
+                                  {f.recommendation && <p className="text-xs text-gray-400 mt-1">{f.recommendation}</p>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          <p className="text-xs text-gray-500">{securityAudit.disclaimer}</p>
                         </div>
                       )}
                     </div>

@@ -1,59 +1,34 @@
-const User = require('../models/User.model');
+const profiles = require('../repositories/profiles.repo');
+const { requireText } = require('../middleware/validate.middleware');
 
-const getProfile = async (req, res) => {
+const getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
+    const profile = await profiles.getProfile(req.user.userId);
     res.status(200).json({
       success: true,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
+        id: req.user.userId,
+        name: profile?.name || req.user.name,
+        email: req.user.email,
+        createdAt: profile?.created_at,
       },
     });
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 
-const updateProfile = async (req, res) => {
+// Email changes go through Supabase Auth (with confirmation), not this endpoint.
+const updateProfile = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
-    const userId = req.user.userId;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (name) user.name = name;
-    if (email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser._id.toString() !== userId) {
-        return res.status(400).json({ message: 'Email already in use' });
-      }
-      user.email = email;
-    }
-
-    await user.save();
-
+    const name = requireText(req.body.name, 'a name', 100);
+    const profile = await profiles.updateName(req.user.userId, name);
     res.status(200).json({
       success: true,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
+      user: { id: req.user.userId, name: profile.name, email: req.user.email },
     });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    next(err);
   }
 };
 

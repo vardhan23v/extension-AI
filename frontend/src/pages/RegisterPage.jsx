@@ -7,6 +7,7 @@ const RegisterPage = () => {
   const { register } = useAuth();
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -19,17 +20,22 @@ const RegisterPage = () => {
     setLoading(true);
     setError('');
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
       setLoading(false);
       return;
     }
 
     try {
-      await register(formData.name, formData.email, formData.password);
-      navigate('/generate');
+      const { needsConfirmation } = await register(formData.name, formData.email, formData.password);
+      if (needsConfirmation) {
+        setError('');
+        setNotice('Check your email to confirm your account, then sign in.');
+      } else {
+        navigate('/generate');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -41,6 +47,12 @@ const RegisterPage = () => {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
           <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
           <p className="text-gray-400 mb-8">Start building Chrome extensions with AI</p>
+
+          {notice && (
+            <div role="status" className="bg-emerald-900/20 border border-emerald-900 text-emerald-300 px-4 py-3 rounded-lg mb-6 text-sm">
+              {notice}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-900/20 border border-red-900 text-red-400 px-4 py-3 rounded-lg mb-6 text-sm">

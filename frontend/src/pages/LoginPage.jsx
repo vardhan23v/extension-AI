@@ -23,7 +23,7 @@ const LoginPage = () => {
       await login(formData.email, formData.password);
       navigate('/generate');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
