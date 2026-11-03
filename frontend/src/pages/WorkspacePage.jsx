@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, MoreHorizontal,
-  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket,
+  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket, Palette,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useProject } from '../features/workspace/useProject';
@@ -14,6 +14,7 @@ import { EditorPanel, EditorTabs, DiffPanel } from '../features/workspace/Editor
 import { AssistantPanel } from '../features/workspace/AssistantPanel';
 import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../features/workspace/SidePanels';
 import { PublishPanel } from '../features/publishing/PublishPanel';
+import { DesignPanel } from '../features/design/DesignPanel';
 import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
@@ -92,6 +93,21 @@ const WorkspacePage = () => {
   };
 
   const flush = useCallback(() => p.save().catch(() => { throw new Error('Save your changes before continuing.'); }), [p]);
+
+  // Asks the crew for a change and opens it as a proposal (used by the Design tab).
+  const requestEdit = async (prompt) => {
+    setSide('assistant');
+    setMobile('assistant');
+    const pending = toast.loading('The crew is preparing the change…');
+    try {
+      await flush();
+      const res = await projectsApi.edit(id, prompt);
+      setProposal({ ...res.proposal, changes: res.changes, summary: res.generation?.summary, warnings: res.generation?.warnings || [], trace: res.generation?.trace || [] });
+      toast.success('Proposal ready — review the diff', { id: pending });
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not prepare the change'), { id: pending });
+    }
+  };
 
   const startReview = () => {
     const first = proposal.changes.changed[0] || proposal.changes.added[0] || proposal.changes.removed[0];
@@ -194,6 +210,7 @@ const WorkspacePage = () => {
   const SIDE_TABS = [
     { id: 'assistant', label: 'Assistant', icon: Bot },
     { id: 'preview', label: 'Preview', icon: Eye },
+    { id: 'design', label: 'Design', icon: Palette },
     { id: 'problems', label: 'Problems', icon: AlertTriangle, badge: errorsCount ? <Badge tone="danger" className="px-1.5 py-0">{errorsCount}</Badge> : null },
     { id: 'history', label: 'History', icon: History },
     { id: 'security', label: 'Security', icon: ShieldCheck },
@@ -210,6 +227,21 @@ const WorkspacePage = () => {
         return <HistoryPanel projectId={id} refreshKey={historyKey} beforeRestore={flush} onRestored={onRestored} />;
       case 'security':
         return <SecurityPanel projectId={id} beforeAudit={flush} onOpenFile={openFile} />;
+      case 'design':
+        return (
+          <DesignPanel
+            files={p.files}
+            locked={!!proposal}
+            onUpdateFile={p.updateFile}
+            onPropose={(pr) => {
+              setProposal({ ...pr, title: p.project.title, warnings: [], trace: [] });
+              setSide('assistant');
+              setMobile('assistant');
+              setReviewing(pr.changes.changed[0] || null);
+            }}
+            onRequestEdit={requestEdit}
+          />
+        );
       case 'publish':
         return <PublishPanel project={p.project} files={p.files} beforeAction={flush} />;
       default:

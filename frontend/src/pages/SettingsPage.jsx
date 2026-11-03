@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { userApi, errorMessage } from '../lib/api';
 import { Button, Field, Input, PageHeader, Tabs } from '../components/ui';
+import { AiKeys } from '../features/settings/AiKeys';
 
 const Section = ({ title, description, children }) => (
   <section className="grid gap-4 border-b border-rule py-7 md:grid-cols-[220px_1fr]">
@@ -62,8 +63,8 @@ const SettingsPage = () => {
       <Section title="Appearance">
         <Tabs label="Theme" value={theme} onChange={setTheme} tabs={[{ id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }]} />
       </Section>
-      <Section title="AI providers" description="Extensio AI currently uses platform-managed AI keys. Bring-your-own-key support is planned for a later phase.">
-        <p className="text-[13px] text-muted">AI requests are rate-limited per account to keep the service available.</p>
+      <Section title="AI keys" description="Optional. Use your own Groq, Gemini or OpenRouter key — you pay the provider directly, and you aren’t limited by shared platform quotas.">
+        <AiKeys />
       </Section>
       <Section title="Session">
         <Button variant="danger-ghost" onClick={async () => { await logout(); navigate('/'); }}>Sign out</Button>

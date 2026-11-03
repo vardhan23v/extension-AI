@@ -111,6 +111,11 @@ export const galleryApi = {
 export const userApi = {
   profile: () => data(api.get('/user/profile')),
   updateProfile: (name) => data(api.put('/user/profile', { name })),
+  keys: () => data(api.get('/user/keys')),
+  saveKey: (provider, key) => data(api.put(`/user/keys/${provider}`, { key }, { timeout: 20000 })),
+  testKey: (provider) => data(api.post(`/user/keys/${provider}/test`, null, { timeout: 20000 })),
+  deleteKey: (provider) => data(api.delete(`/user/keys/${provider}`)),
+  saveSettings: (settings) => data(api.put('/user/settings', settings)),
 };
 
 // Readable message from an axios error, including validator output.

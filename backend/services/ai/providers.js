@@ -1,6 +1,8 @@
 // Provider adapters. Keys come only from server environment variables and are
 // never logged or returned to clients.
 
+const { resolveKey, getAiContext } = require('./context');
+
 const DEFAULT_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 90000;
 
 class ProviderError extends Error {
@@ -31,7 +33,8 @@ const retryAfterMs = (res, data) => {
 
 const openAiCompatible = (name, url, keyEnv, model) => ({
   name,
-  isConfigured: () => Boolean(process.env[keyEnv]),
+  id: name.toLowerCase(),
+  isConfigured: () => Boolean(resolveKey(name.toLowerCase(), keyEnv)),
   async complete({ system, user, json = false, maxTokens = 8000, timeoutMs = DEFAULT_TIMEOUT_MS, models }) {
     let res;
     try {
@@ -39,7 +42,7 @@ const openAiCompatible = (name, url, keyEnv, model) => ({
         url,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${process.env[keyEnv]}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${resolveKey(name.toLowerCase(), keyEnv)}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             // Per-request override, e.g. a faster model for lightweight agents.
             model: models?.[name] || model,
@@ -76,7 +79,8 @@ const openAiCompatible = (name, url, keyEnv, model) => ({
 
 const gemini = {
   name: 'Gemini',
-  isConfigured: () => Boolean(process.env.GEMINI_API_KEY),
+  id: 'gemini',
+  isConfigured: () => Boolean(resolveKey('gemini', 'GEMINI_API_KEY')),
   async complete({ system, user, json = false, maxTokens = 8000, timeoutMs = DEFAULT_TIMEOUT_MS }) {
     const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
     let res;
@@ -85,7 +89,7 @@ const gemini = {
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': resolveKey('gemini', 'GEMINI_API_KEY') },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: system }] },
             contents: [{ role: 'user', parts: [{ text: user }] }],
@@ -129,7 +133,10 @@ const completeWithFallback = async (request, parse = (t) => t, { providers = PRO
   const errors = [];
   const configured = providers.filter((p) => p.isConfigured());
   if (configured.length === 0) {
-    throw new ProviderError('AI', 'no AI provider is configured on the server');
+    throw new ProviderError(
+      'AI',
+      getAiContext().byokOnly ? 'no API key of your own is saved — add one in Settings or turn off “Use only my keys”' : 'no AI provider is configured on the server'
+    );
   }
   for (const provider of configured) {
     for (let attempt = 0; attempt < 2; attempt++) {
