@@ -10,7 +10,7 @@
 [![Deploy with Vercel](https://img.shields.io/badge/Deploy_with-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
 
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
-[![Tests](https://img.shields.io/badge/Backend_tests-108_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
+[![Tests](https://img.shields.io/badge/Backend_tests-127_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
 [![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
@@ -61,6 +61,8 @@ Generated code is treated as untrusted from start to finish. It is parsed, valid
 | **History** | A snapshot is taken before every AI change, restore and burst of manual edits. Restore any version. |
 | **Security Center** | Deterministic checks (broad host access, `eval`/`new Function`, unsafe DOM sinks, CSP, exposed keys, external messaging) plus an optional AI explanation. Results are reported as `passed`, `findings`, `incomplete` or `failed`. |
 | **Preview** | Popup, options and side-panel pages rendered in a sandboxed iframe with simulated `chrome.*` APIs, in light and dark. |
+| **Import** | Upload an existing extension ZIP (drag-and-drop) to edit, audit and publish it. Guarded against path traversal, zip bombs and tampered entries (CRC-checked). |
+| **Publishing assistant** | Chrome Web Store readiness checklist computed from the code, AI-drafted listing (description, category, single purpose, per-permission justifications, privacy policy), promo tile, and a store package ZIP. You submit it yourself. |
 | **Community** | Share projects, upvote (once per user) and clone. |
 
 ## Architecture
@@ -249,7 +251,7 @@ Open http://localhost:5173 and create an account. If email confirmation is on in
 |---|---|---|
 | `npm run install:all` | root | Install backend and frontend dependencies |
 | `npm run dev:backend` / `dev:frontend` | root | Run the API (nodemon) / Vite dev server |
-| `npm test` | root or `backend/` | Jest suite (108 tests) |
+| `npm test` | root or `backend/` | Jest suite (127 tests) |
 | `npm run lint` | root or `frontend/` | ESLint |
 | `npm run build` | root or `frontend/` | Production build to `frontend/dist` |
 | `node backend/test-ai.js "<prompt>"` | | Live crew run against your real providers, printing each agent's timing (uses credits) |
@@ -273,6 +275,7 @@ All routes are under `/api`. Authenticated routes need `Authorization: Bearer <S
 | `POST` | `/extensions/:id/duplicate` | ✓ | Copy a project |
 | `DELETE` | `/extensions/:id` | ✓ | Delete a project and its history |
 | `GET` | `/extensions/download/:id` | ✓ | ZIP download |
+| `POST` | `/extensions/import` | ✓ | Import an extension; body is the raw ZIP (`Content-Type: application/zip`, ≤ 5 MB) |
 
 </details>
 
@@ -289,6 +292,10 @@ All routes are under `/api`. Authenticated routes need `Authorization: Bearer <S
 | `POST` | `/extensions/:id/versions/:versionId/restore` | ✓ | Restore a snapshot (the current state is snapshotted first) |
 | `POST` | `/extensions/:id/audit` | ✓ | Security audit (owner only; result stored on the project) |
 | `POST` | `/extensions/enhance-prompt` | ✓ | Expand a short idea into a detailed prompt |
+| `GET` | `/extensions/:id/publishing` | ✓ | Store readiness checklist + saved listing |
+| `POST` | `/extensions/:id/publishing/kit` | ✓ | Draft the listing with AI (saved, editable) |
+| `PUT` | `/extensions/:id/publishing/kit` | ✓ | Save an edited listing |
+| `GET` | `/extensions/:id/publishing/package` | ✓ | ZIP: `extension/` + `store-listing.md` + `privacy-policy.md` |
 
 </details>
 
@@ -341,7 +348,7 @@ Set the backend variables and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in 
 - The preview is visual only. Content scripts and service workers don't run there; load the ZIP in Chrome to test behaviour.
 - Security checks are automated pattern checks, not a review or Chrome Web Store approval.
 - On free AI tiers, rate limits (for example Groq's tokens-per-minute) can make back-to-back generations wait or fail; the API reports this clearly.
-- The Testing Lab (automated Chromium runs), GitHub integration and publishing assistant are planned. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
+- The Testing Lab (automated Chromium runs via GitHub Actions), bring-your-own AI keys, a visual theme editor and GitHub export are in progress. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
 
 ## Contributing
 

@@ -16,6 +16,7 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
 const SecurityCenterPage = lazy(() => import('./pages/SecurityCenterPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const PublishingPage = lazy(() => import('./pages/PublishingPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const SharedViewPage = lazy(() => import('./pages/SharedViewPage'));
@@ -79,6 +80,7 @@ function App() {
               <Route path="/studio" element={<StudioRedirect />} />
               <Route path="/security" element={<SecurityCenterPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/publishing" element={<PublishingPage />} />
               {isAuthenticated && <Route path="/templates" element={<TemplatesPage />} />}
               {isAuthenticated && <Route path="/gallery" element={<GalleryPage />} />}
             </Route>

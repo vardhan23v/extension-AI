@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { ChevronDown, LayoutTemplate, Sparkles, Wand2, AlertTriangle } from 'lucide-react';
 import { projectsApi, createWithProgress, errorMessage, errorDetails } from '../lib/api';
 import { CrewProgress } from '../features/crew/CrewProgress';
+import { ImportZipButton } from '../features/import/ImportZip';
 import { Button, Card, Field, Input, PageHeader, Switch, Textarea } from '../components/ui';
 
 const LANGUAGES = [
@@ -76,9 +77,12 @@ const NewProjectPage = () => {
         title="AI Builder"
         description="Describe the extension. Be specific about what the popup shows and which sites it should work on."
         actions={
+          <>
+          <ImportZipButton />
           <Link to="/templates" className="inline-flex h-9 items-center gap-2 rounded border border-border px-3.5 text-sm font-medium hover:bg-surface-2">
             <LayoutTemplate className="h-4 w-4" aria-hidden="true" /> Templates
           </Link>
+          </>
         }
       />
 

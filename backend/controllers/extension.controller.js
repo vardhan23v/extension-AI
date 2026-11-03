@@ -6,6 +6,8 @@ const { validateExtension } = require('../services/validator.service');
 const { diffSummary } = require('../utils/diff');
 const { enhancePrompt: runEnhance, GenerationError } = require('../services/generation.service');
 const { runCrew } = require('../services/crew/crew');
+const { readExtensionZip, titleFromManifest } = require('../services/import.service');
+const publishing = require('../services/publishing.service');
 const { auditExtension: runAudit } = require('../services/security/audit.service');
 const { createZipBuffer } = require('../services/zipper.service');
 const { safeDownloadName } = require('../utils/sanitize');
@@ -522,7 +524,109 @@ const getSharedExtension = async (req, res, next) => {
   }
 };
 
+// Imports an existing extension from an uploaded ZIP (raw application/zip body).
+const importExtension = async (req, res, next) => {
+  try {
+    const { files: raw, skipped } = readExtensionZip(req.body);
+    const { title, description } = titleFromManifest(raw);
+    const { files, validation } = prepareFiles(raw, title);
+    const ext = await repo.create({
+      user_id: req.user.userId,
+      title,
+      description,
+      prompt: `Imported: ${title}`,
+      files,
+      iteration_history: [{ prompt: 'Imported from ZIP', timestamp: new Date().toISOString() }],
+    });
+    res.status(201).json({ success: true, extension: toClient(ext), validation: { errors: validation.errors, warnings: validation.warnings }, skipped });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const permissionsOf = (files) => {
+  const m = publishing.readManifest(files);
+  return [...(m.permissions || []), ...(m.host_permissions || [])];
+};
+
+const getPublishing = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const assets = ext.store_assets || {};
+    res.json({ success: true, checklist: publishing.buildChecklist(ext.files, assets), kit: assets.kit || null, permissions: permissionsOf(ext.files) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const draftStoreKit = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    let kit;
+    try {
+      kit = await publishing.draftStoreKit(ext);
+    } catch (e) {
+      console.error('Store kit draft failed:', e.message);
+      return res.status(502).json({ message: 'Could not draft the store listing right now. You can still write it yourself.' });
+    }
+    const assets = { ...(ext.store_assets || {}), kit, description: kit.shortDescription };
+    const updated = await repo.updateOwned(ext.id, req.user.userId, { store_assets: assets });
+    res.json({ success: true, kit, checklist: publishing.buildChecklist(updated.files, assets), permissions: permissionsOf(updated.files) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const saveStoreKit = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    let kit;
+    try {
+      kit = publishing.cleanKit(req.body.kit, permissionsOf(ext.files));
+    } catch {
+      return res.status(400).json({ message: 'Write a store description before saving.' });
+    }
+    const assets = { ...(ext.store_assets || {}), kit, description: kit.shortDescription };
+    const updated = await repo.updateOwned(ext.id, req.user.userId, { store_assets: assets });
+    res.json({ success: true, kit, checklist: publishing.buildChecklist(updated.files, assets) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ZIP with the extension in extension/ plus the listing and privacy policy.
+const downloadStorePackage = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const kit = ext.store_assets?.kit;
+    if (!kit) return res.status(409).json({ message: 'Create the store kit first.' });
+    const files = [
+      ...ext.files.map((f) => ({ ...f, filename: `extension/${f.filename}` })),
+      { filename: 'store-listing.md', content: publishing.listingMarkdown(ext, kit) },
+      { filename: 'privacy-policy.md', content: kit.privacyPolicy || '# Privacy policy\n\nThis extension does not collect, store or transmit personal data.\n' },
+    ];
+    const zip = await createZipBuffer(files);
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${safeDownloadName(ext.title)}-store-package.zip"`,
+      'Content-Length': zip.length,
+    });
+    res.send(zip);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
+  importExtension,
+  getPublishing,
+  draftStoreKit,
+  saveStoreKit,
+  downloadStorePackage,
   generateExtension,
   generateExtensionStream,
   downloadExtension,

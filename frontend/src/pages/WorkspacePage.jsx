@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, MoreHorizontal,
-  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2,
+  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useProject } from '../features/workspace/useProject';
 import { rememberProject } from '../features/workspace/recent';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { FileExplorer } from '../features/workspace/FileExplorer';
 import { EditorPanel, EditorTabs, DiffPanel } from '../features/workspace/EditorPanel';
 import { AssistantPanel } from '../features/workspace/AssistantPanel';
 import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../features/workspace/SidePanels';
+import { PublishPanel } from '../features/publishing/PublishPanel';
 import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
@@ -35,8 +37,11 @@ const WorkspacePage = () => {
   const [openTabs, setOpenTabs] = useState([]);
   const [active, setActive] = useState(null);
   const [reveal, setReveal] = useState(null);
-  const [side, setSide] = useState('assistant');
-  const [mobile, setMobile] = useState('code');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const [params] = useSearchParams();
+  const initialPanel = params.get('panel');
+  const [side, setSide] = useState(initialPanel || 'assistant');
+  const [mobile, setMobile] = useState(initialPanel || 'code');
   const [proposal, setProposal] = useState(null);
   const [reviewing, setReviewing] = useState(null); // filename being diffed
   const [applying, setApplying] = useState(false);
@@ -192,6 +197,7 @@ const WorkspacePage = () => {
     { id: 'problems', label: 'Problems', icon: AlertTriangle, badge: errorsCount ? <Badge tone="danger" className="px-1.5 py-0">{errorsCount}</Badge> : null },
     { id: 'history', label: 'History', icon: History },
     { id: 'security', label: 'Security', icon: ShieldCheck },
+    { id: 'publish', label: 'Publish', icon: Rocket },
   ];
 
   const sidePanel = (tab) => {
@@ -204,6 +210,8 @@ const WorkspacePage = () => {
         return <HistoryPanel projectId={id} refreshKey={historyKey} beforeRestore={flush} onRestored={onRestored} />;
       case 'security':
         return <SecurityPanel projectId={id} beforeAudit={flush} onOpenFile={openFile} />;
+      case 'publish':
+        return <PublishPanel project={p.project} files={p.files} beforeAction={flush} />;
       default:
         return (
           <AssistantPanel
@@ -304,8 +312,9 @@ const WorkspacePage = () => {
         </div>
       </div>
 
-      {/* Desktop: three panels */}
-      <div className="hidden min-h-0 flex-1 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_380px] xl:grid-cols-[240px_minmax(0,1fr)_420px]">
+      {/* Desktop: three panels. Only one layout is mounted at a time, so the editor and panels never run twice. */}
+      {isDesktop ? (
+      <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_380px] xl:grid-cols-[240px_minmax(0,1fr)_420px]">
         <aside className="min-h-0 border-r border-rule bg-bg">{explorer}</aside>
         <section aria-label="Editor" className="min-h-0">{editorArea}</section>
         <aside aria-label="Tools" className="flex min-h-0 flex-col border-l border-rule bg-bg">
@@ -316,8 +325,9 @@ const WorkspacePage = () => {
         </aside>
       </div>
 
-      {/* Mobile / tablet: one panel at a time */}
-      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+      ) : (
+      /* Mobile / tablet: one panel at a time */
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="shrink-0 border-b border-border px-1.5 py-1">
           <Tabs
             size="sm"
@@ -331,6 +341,7 @@ const WorkspacePage = () => {
           {mobile === 'files' ? explorer : mobile === 'code' ? editorArea : sidePanel(mobile)}
         </div>
       </div>
+      )}
 
       {/* Status line */}
       <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-rule bg-bg px-3 font-mono text-[11.5px] text-muted tabular" aria-label="Project status">

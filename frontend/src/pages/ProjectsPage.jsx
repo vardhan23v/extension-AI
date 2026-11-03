@@ -6,6 +6,7 @@ import { useAsync } from '../lib/useAsync';
 import { Button, EmptyState, ErrorState, Input, PageHeader, Select, Card } from '../components/ui';
 import { ProjectRow, ProjectRowSkeleton } from '../features/projects/ProjectRow';
 import { useProjectActions } from '../features/projects/useProjectActions';
+import { ImportZipButton, ImportDropZone } from '../features/import/ImportZip';
 
 const PAGE = 25;
 
@@ -57,9 +58,12 @@ const ProjectsPage = () => {
         title="My Projects"
         description="All your extensions. Open one to edit it in Code Studio."
         actions={
+          <>
+          <ImportZipButton />
           <Link to="/new" className="inline-flex h-9 items-center gap-2 rounded bg-primary px-3.5 text-sm font-medium text-primary-fg hover:bg-primary/90">
             <Plus className="h-4 w-4" aria-hidden="true" /> New extension
           </Link>
+          </>
         }
       />
 
@@ -83,6 +87,7 @@ const ProjectsPage = () => {
         </Select>
       </div>
 
+      <ImportDropZone>
       <Card>
         {error && !data ? (
           <ErrorState message={errorMessage(error, 'Could not load projects.')} onRetry={reload} />
@@ -92,7 +97,7 @@ const ProjectsPage = () => {
           <EmptyState
             icon={FolderKanban}
             title={filtered ? 'No matching projects' : 'No projects yet'}
-            description={filtered ? 'Try a different search or filter.' : 'Describe an extension and the AI will build the first version.'}
+            description={filtered ? 'Try a different search or filter.' : 'Describe an extension and the AI will build the first version — or drop an existing extension ZIP here.'}
             action={
               filtered ? (
                 <Button onClick={() => { setQuery(''); setParams({}); }}>Clear filters</Button>
@@ -111,6 +116,7 @@ const ProjectsPage = () => {
           </ul>
         )}
       </Card>
+      </ImportDropZone>
 
       {total > PAGE && (
         <nav aria-label="Pagination" className="mt-4 flex items-center justify-between text-sm text-muted">

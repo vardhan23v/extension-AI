@@ -19,7 +19,7 @@ const NAV = [
   { to: '/security', label: 'Security Center', icon: ShieldCheck },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/gallery', label: 'Community', icon: Users },
-  { label: 'Publishing', icon: Rocket, soon: 'Phase 5' },
+  { to: '/publishing', label: 'Publishing', icon: Rocket },
 ];
 
 const NavItems = ({ onNavigate }) => {

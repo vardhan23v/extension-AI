@@ -4,6 +4,18 @@ import api, { AI_TIMEOUT } from '../api/axios';
 import { supabase } from './supabase';
 
 const data = (p) => p.then((r) => r.data);
+
+// Triggers a browser download for a Blob.
+export const saveBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 const ai = { timeout: AI_TIMEOUT };
 
 export const projectsApi = {
@@ -23,17 +35,19 @@ export const projectsApi = {
   restore: (id, versionId) => data(api.post(`/extensions/${id}/versions/${versionId}/restore`)),
   audit: (id) => data(api.post(`/extensions/${id}/audit`, null, ai)),
   publish: (id) => data(api.post(`/extensions/${id}/publish`)),
+  importZip: (file) =>
+    data(api.post('/extensions/import', file, { headers: { 'Content-Type': 'application/zip' }, timeout: 60000 })),
+  publishing: (id) => data(api.get(`/extensions/${id}/publishing`)),
+  draftStoreKit: (id) => data(api.post(`/extensions/${id}/publishing/kit`, null, { timeout: 90000 })),
+  saveStoreKit: (id, kit) => data(api.put(`/extensions/${id}/publishing/kit`, { kit })),
+  downloadStorePackage: async (id, title) => {
+    const res = await api.get(`/extensions/${id}/publishing/package`, { responseType: 'blob', timeout: 60000 });
+    saveBlob(res.data, `${(title || 'extension').replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '-') || 'extension'}-store-package.zip`);
+  },
   enhancePrompt: (prompt) => data(api.post('/extensions/enhance-prompt', { prompt }, { timeout: 60000 })),
   download: async (id, title) => {
     const res = await api.get(`/extensions/download/${id}`, { responseType: 'blob', timeout: 60000 });
-    const url = URL.createObjectURL(res.data);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(title || 'extension').replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '-') || 'extension'}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    saveBlob(res.data, `${(title || 'extension').replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '-') || 'extension'}.zip`);
   },
 };
 
