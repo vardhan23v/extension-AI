@@ -1,16 +1,16 @@
 <div align="center">
 
-# ✨ Extensio AI
+# Extensio AI
 
-### Build, edit, audit and export Chrome extensions — just by describing them.
+### Describe a Chrome extension. Get a validated Manifest V3 project you can edit, review, audit and ship.
 
 <br />
 
-[![Live Demo](https://img.shields.io/badge/🚀_LIVE_DEMO-extension--ai--five.vercel.app-4F46E5?style=for-the-badge)](https://extension-ai-five.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/LIVE_DEMO-extension--ai--five.vercel.app-C2410C?style=for-the-badge&logo=googlechrome&logoColor=white)](https://extension-ai-five.vercel.app/)
 [![Deploy with Vercel](https://img.shields.io/badge/Deploy_with-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
 
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
-[![Tests](https://img.shields.io/badge/Backend_tests-96_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
+[![Tests](https://img.shields.io/badge/Backend_tests-108_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
 [![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
@@ -31,99 +31,327 @@
 [![Stars](https://img.shields.io/github/stars/vardhan23v/extension-AI?style=for-the-badge&logo=github)](https://github.com/vardhan23v/extension-AI/stargazers)
 [![Issues](https://img.shields.io/github/issues/vardhan23v/extension-AI?style=for-the-badge&logo=github)](https://github.com/vardhan23v/extension-AI/issues)
 
+[Live demo](https://extension-ai-five.vercel.app/) · [Architecture](#architecture) · [Quick start](#quick-start) · [API](#api-reference) · [Design system](DESIGN.md) · [Roadmap](EXTENSIO_UPGRADE_PLAN.md)
+
 </div>
 
 ---
 
-**Extensio AI** turns a plain-English idea into a complete, validated Manifest V3 Chrome extension project. You can edit it in a real code editor, refine it with an AI assistant that shows a diff before changing anything, run security checks, and download a ZIP that is ready for `chrome://extensions`.
+## Overview
 
-## 🚀 Features
+Building a Chrome extension means learning Manifest V3, the permission model, service workers, content scripts and the store's security rules before writing any product code. Extensio AI removes that setup cost without hiding the code:
 
-- **Text-to-extension**: describe the idea and get `manifest.json`, popup, scripts and generated icons.
-- **Agent crew**: a Product Planner (least-privilege spec), Extension Engineer, QA Reviewer and Security Analyst build and check every project, with live progress in the builder.
-- **Validated output**: every result is checked for MV3 structure, missing files, remote or inline scripts and JavaScript syntax before it is saved.
-- **Code Studio**: file tree, Monaco editor, search across files, autosave, formatting and version history with restore.
-- **AI assistant with review**: ask for changes or paste an error; the assistant proposes edits as a diff you apply or discard.
-- **Security Center**: deterministic checks for broad permissions, `eval`, unsafe DOM use, CSP issues and exposed keys, plus a plain-language explanation. Not a certification.
-- **Visual preview**: popup and options pages in a sandboxed frame with simulated Chrome APIs, in light and dark mode.
-- **Templates and Community**: 20 starter prompts, plus a public gallery to share, upvote and clone extensions.
-- **One-click ZIP**: download and load with “Load unpacked”.
+1. You describe the extension in plain English.
+2. A crew of four agents plans it, writes it, checks it against Manifest V3 rules and reviews it for dangerous patterns, and you watch each step happen.
+3. You get a real project in a browser IDE. Edit it by hand, or ask the assistant for changes and review a diff before anything is saved.
+4. You run a security audit and download a ZIP that loads in `chrome://extensions`.
 
-## 🛠️ Technology Stack
+Generated code is treated as untrusted from start to finish. It is parsed, validated and audited, but never executed on the server.
 
-- **Frontend**: React 18 (Vite), Tailwind CSS, React Router, Monaco Editor, Supabase JS (auth)
-- **Backend**: Node.js, Express (helmet, rate limiting), Jest + Supertest
-- **Database & Auth**: Supabase (Postgres, Supabase Auth, Row Level Security)
-- **AI**: Groq (`openai/gpt-oss-120b`) → Google Gemini → OpenRouter fallback chain
-- **Deployment**: Vercel
+## Features
 
-## 🧭 App overview
+| Area | What you get |
+|---|---|
+| **Generation** | Prompt → complete MV3 project (manifest, popup, service worker, content scripts, generated icons). Optional support link, webhook and `_locales` translations. |
+| **Agent crew** | Product Planner (least-privilege spec) → Extension Engineer → QA Reviewer → Security Analyst, streamed live to the UI over Server-Sent Events. |
+| **Validation** | MV3 schema, every referenced file, remote and inline scripts (blocked by MV3 CSP), host patterns, known permissions, JavaScript syntax. |
+| **Code Studio** | Monaco editor bundled locally: file tree, tabs, search across files, autosave with retry, format, `manifest.json` schema diagnostics, Workbench light/dark themes. |
+| **AI assistant** | Conversational edits and "fix this error" requests come back as a proposal with a per-file diff. Nothing changes until you apply it. Conversation history persists per project. |
+| **History** | A snapshot is taken before every AI change, restore and burst of manual edits. Restore any version. |
+| **Security Center** | Deterministic checks (broad host access, `eval`/`new Function`, unsafe DOM sinks, CSP, exposed keys, external messaging) plus an optional AI explanation. Results are reported as `passed`, `findings`, `incomplete` or `failed`. |
+| **Preview** | Popup, options and side-panel pages rendered in a sandboxed iframe with simulated `chrome.*` APIs, in light and dark. |
+| **Community** | Share projects, upvote (once per user) and clone. |
 
-- **Dashboard** — recent projects and a quick prompt box
-- **AI Builder** (`/new`) — describe an extension (optional support link, webhook, translations)
-- **My Projects** — search, filter by status, rename, duplicate, download, delete
-- **Code Studio** (`/projects/:id`) — file tree, Monaco editor with autosave, AI assistant that proposes changes as a reviewable diff, visual preview, problems list, version history with restore, security audit
-- **Security Center** — audit status across all projects
-- **Templates**, **Community**, **Settings**
+## Architecture
 
-## 🔒 What happens to generated code
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI["React SPA<br/>Vite · Tailwind · Monaco"]
+    SB["supabase-js<br/>(auth session)"]
+  end
 
-1. The AI output is parsed and every filename is checked (no absolute paths, `..`, or unexpected file types).
-2. Icons referenced by the manifest are generated as real PNG files.
-3. A Manifest V3 validator checks the manifest, every referenced file, remote/inline scripts (blocked by MV3 CSP), permissions, and JavaScript syntax (code is parsed, never executed).
-4. If validation fails, the AI gets one repair attempt; otherwise the request fails with the list of errors.
-5. Security audits combine deterministic checks with an optional AI explanation and report `passed`, `findings`, `incomplete` or `failed` — an audit is never reported as passed when the AI review could not run. It is not a security certification.
+  subgraph Vercel
+    API["Express API<br/>api/index.js → backend/server.js"]
+    CREW["Agent crew<br/>services/crew"]
+    VAL["Validator · Sanitizer<br/>Static security checks"]
+  end
 
-The in-app preview is a visual mock only (sandboxed iframe, mocked Chrome APIs). Load the downloaded ZIP in `chrome://extensions` to test real behavior.
+  subgraph Supabase
+    AUTH["Auth"]
+    PG[("Postgres + RLS<br/>extensions · versions<br/>conversations · upvotes")]
+  end
 
-## ⚙️ Getting Started
+  LLM["LLM providers<br/>Groq → Gemini → OpenRouter"]
 
-### Prerequisites
+  UI -- "Bearer JWT · REST + SSE" --> API
+  SB <--> AUTH
+  API -- "verify token" --> AUTH
+  API -- "service role, owner-scoped queries" --> PG
+  API --> CREW --> LLM
+  CREW --> VAL
+```
 
-- Node.js 18+
-- A Supabase project
-- At least one AI key: Groq, Gemini or OpenRouter
+**Design decisions**
 
-### 1. Database
+- **One deployable.** Vercel serves the static SPA and runs the Express app as a single serverless function (`vercel.json` rewrites `/api/*`). No separate backend host to keep alive.
+- **Supabase for auth and data.** The browser handles sign-in with the public anon key. The API verifies the access token on every request and queries Postgres with the service-role key. Every query that touches user data filters by the authenticated user id. Row Level Security is enabled as a second layer.
+- **Untrusted output by default.** AI-generated filenames and code go through a sanitizer (path traversal, file types, size limits) and a validator before they are stored. ZIPs are built in memory, with no temporary files.
+- **Provider fallback.** `services/ai/providers.js` wraps Groq, Gemini and OpenRouter with timeouts, a retry that respects `Retry-After`, a JSON-mode fallback and per-request model overrides.
 
-Run the files in `supabase/migrations/` in order in the Supabase SQL editor (or `supabase db push`):
+### The agent crew
 
-1. `20261103000000_init.sql` — users' projects, versions, upvotes
-2. `20261104000000_phase2.sql` — project status/description, saved audits, assistant conversations
+Crew-style orchestration lives in the Node backend (`backend/services/crew`). It borrows CrewAI's ideas: agents with a role and a goal, a shared context and sequential hand-offs. It runs inside the existing serverless function, without a separate Python service.
 
-Rollbacks live in `supabase/rollbacks/`. In Supabase → Authentication → URL Configuration, set the Site URL to your deployed URL so confirmation emails link there.
+```mermaid
+sequenceDiagram
+  participant U as Builder UI
+  participant API as /generate/stream
+  participant P as Product Planner<br/>(gpt-oss-20b)
+  participant E as Extension Engineer<br/>(gpt-oss-120b)
+  participant Q as QA Reviewer<br/>(deterministic)
+  participant S as Security Analyst<br/>(deterministic)
 
-### 2. Backend
+  U->>API: prompt
+  API->>P: plan request
+  P-->>API: spec: files, features, least permissions
+  API-->>U: agent:done planner
+  API->>E: prompt + spec
+  E-->>API: files (self-repairs once on validation errors)
+  API->>Q: validate MV3 + check plan coverage
+  Q-->>E: one fix request, only if needed
+  API->>S: static security checks
+  S-->>E: one fix request, only for critical findings
+  API-->>U: result (saved project) + trace
+```
+
+- **Cost-aware.** Only the Planner and the Engineer always call a model. The Planner uses a smaller model, which on Groq has its own per-model rate limit. The reviewers are deterministic and call the Engineer only when they find a real problem.
+- **Keep the fix only if it helps.** A fix is applied only if it does not make validation or security results worse.
+- **Bounded.** The crew has a hard budget (`CREW_BUDGET_MS`, default 50 s) that keeps it inside Vercel's 60 s function limit. When time is short it skips optional steps and records the skip in the trace.
+- **Fails safe.** If the Planner fails, the crew builds without a plan. If a reviewer fails, the valid result is kept. `CREW_ENABLED=false` switches back to the single-agent pipeline.
+
+### Generation pipeline
+
+```
+model output ─▶ JSON extraction ─▶ manifest repair ─▶ filename sanitizer ─▶ icon injection ─▶ MV3 validator
+                (fences, prose)    (JS-style /         (no ../, absolute    (real 16/48/128     (errors → one
+                                    double-escaped)     paths, bad types)    PNGs)               repair attempt)
+```
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Frontend | React 18, Vite 4, React Router 6, Tailwind 3 | Fast SPA, route-level code splitting |
+| Editor | Monaco (bundled locally, workers via Vite) | VS Code editing model; no CDN dependency |
+| Design | Tokens in CSS variables, Bricolage Grotesque / Geist / JetBrains Mono (self-hosted) | See [DESIGN.md](DESIGN.md) |
+| API | Node.js, Express 4, helmet, express-rate-limit | Runs as one Vercel function |
+| Data & auth | Supabase Postgres + Auth, RLS | Managed auth, SQL migrations, row-level security |
+| AI | Groq (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`), Gemini, OpenRouter | Fast primary, two fallbacks |
+| Tests | Jest, Supertest | Route, service and crew tests with mocked providers |
+
+## Repository layout
+
+```
+.
+├── api/index.js                 # Vercel entry → backend/server.js
+├── backend/
+│   ├── server.js                # Express app: security headers, CORS, rate limits, error handling
+│   ├── routes/ controllers/     # HTTP layer
+│   ├── repositories/            # Supabase data access (owner-scoped)
+│   ├── services/
+│   │   ├── crew/                # Planner, Engineer, QA, Security agents + orchestrator
+│   │   ├── ai/                  # Provider adapters and response parsing
+│   │   ├── security/            # Static checks + audit status logic
+│   │   ├── generation.service.js
+│   │   ├── validator.service.js # Manifest V3 validator
+│   │   ├── icons.service.js     # Dependency-free PNG icon generator
+│   │   └── zipper.service.js    # In-memory ZIP
+│   ├── utils/                   # Sanitizer, manifest repair, diff summary
+│   └── tests/                   # Jest + Supertest
+├── frontend/
+│   └── src/
+│       ├── components/ui/       # Design-system primitives
+│       ├── features/            # workspace (Code Studio), crew, projects, security
+│       ├── pages/               # Route-level screens (lazy-loaded)
+│       └── lib/                 # API client (REST + SSE), preview builder, helpers
+├── supabase/
+│   ├── migrations/              # Applied in order (supabase db push)
+│   └── rollbacks/               # Manual down migrations
+├── DESIGN.md                    # Design system and motion rules
+└── EXTENSIO_UPGRADE_PLAN.md     # Audit, phases and roadmap
+```
+
+## Quick start
+
+**Prerequisites:** Node.js 18+, a [Supabase](https://supabase.com) project, and at least one AI key: [Groq](https://console.groq.com) (recommended), Gemini or OpenRouter.
 
 ```bash
-cd backend
-npm install
-cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and AI keys
-npm run dev
+git clone https://github.com/vardhan23v/extension-AI.git
+cd extension-AI
+npm run install:all
+```
+
+**1. Database:** apply the migrations with the Supabase CLI (or paste them into the SQL editor in order):
+
+```bash
+npx supabase@2 login
+npx supabase@2 link --project-ref <your-project-ref>
+npx supabase@2 db push
+```
+
+**2. Environment:** copy the examples and fill them in (details [below](#configuration)):
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
+**3. Run:** API on `:5050`, app on `:5173`:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
+Open http://localhost:5173 and create an account. If email confirmation is on in Supabase, confirm the email before signing in.
+
+## Configuration
+
+### Backend (`backend/.env`, server-only)
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `SUPABASE_URL` | yes | | Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | | **Secret** key (`sb_secret_…`). Never expose it to the browser. |
+| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` | at least one | | Providers, tried in that order |
+| `GROQ_MODEL` | | `openai/gpt-oss-120b` | Engineer model |
+| `GROQ_FAST_MODEL` | | `openai/gpt-oss-20b` | Planner model |
+| `CREW_ENABLED` | | `true` | `false` uses the single-agent pipeline |
+| `CREW_BUDGET_MS` | | `50000` | Hard time budget for one crew run |
+| `AI_TIMEOUT_MS` | | `90000` | Per provider request |
+| `AI_RATE_LIMIT` | | `30` | AI requests per user per 15 minutes |
+| `API_RATE_LIMIT` | | `120` | Requests per IP per minute |
+| `CORS_ORIGINS` | prod | | Comma-separated allowed origins (localhost is allowed in development) |
+
+### Frontend (`frontend/.env.local`, public, baked in at build time)
+
+| Variable | Purpose |
+|---|---|
+| `VITE_SUPABASE_URL` | Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Publishable/anon key (safe to expose; protected by RLS and the API) |
+| `VITE_API_URL` | API base in development (production uses same-origin `/api`) |
+
+## Scripts
+
+| Command | Where | Does |
+|---|---|---|
+| `npm run install:all` | root | Install backend and frontend dependencies |
+| `npm run dev:backend` / `dev:frontend` | root | Run the API (nodemon) / Vite dev server |
+| `npm test` | root or `backend/` | Jest suite (108 tests) |
+| `npm run lint` | root or `frontend/` | ESLint |
+| `npm run build` | root or `frontend/` | Production build to `frontend/dist` |
+| `node backend/test-ai.js "<prompt>"` | | Live crew run against your real providers, printing each agent's timing (uses credits) |
+
+## API reference
+
+All routes are under `/api`. Authenticated routes need `Authorization: Bearer <Supabase access token>`. Ids are UUIDs. Errors return `{ message }`, plus `errors[]`/`warnings[]` for validation failures.
+
+<details>
+<summary><strong>Projects</strong></summary>
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/extensions/generate` | ✓ | Run the crew and create a project → `{ extension, generation: { plan, trace, warnings } }` |
+| `POST` | `/extensions/generate/stream` | ✓ | Same, as SSE: `agent:start`, `agent:done`, `result`, `error` |
+| `GET` | `/extensions/my?q=&status=&limit=&offset=` | ✓ | List own projects (search, filter, paginate) |
+| `GET` | `/extensions/:id` | ✓ | Project + current validation |
+| `PATCH` | `/extensions/:id` | ✓ | Update `title`, `description`, `status` (`draft`/`ready`/`archived`) |
+| `PUT` | `/extensions/:id/files` | ✓ | Save editor changes (sanitized, validated, snapshotted) |
+| `POST` | `/extensions/:id/validate` | ✓ | Re-run the MV3 validator |
+| `POST` | `/extensions/:id/duplicate` | ✓ | Copy a project |
+| `DELETE` | `/extensions/:id` | ✓ | Delete a project and its history |
+| `GET` | `/extensions/download/:id` | ✓ | ZIP download |
+
+</details>
+
+<details>
+<summary><strong>Assistant, history, audit</strong></summary>
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/extensions/iterate/:id` | ✓ | Conversational edit; `{ prompt, preview: true }` returns a proposal without saving |
+| `POST` | `/extensions/:id/debug` | ✓ | Fix from an error message; supports `preview` |
+| `POST` | `/extensions/:id/apply` | ✓ | Apply a proposal (re-validated server-side) |
+| `GET` | `/extensions/:id/messages` | ✓ | Assistant conversation |
+| `GET` | `/extensions/:id/versions` | ✓ | Snapshots |
+| `POST` | `/extensions/:id/versions/:versionId/restore` | ✓ | Restore a snapshot (the current state is snapshotted first) |
+| `POST` | `/extensions/:id/audit` | ✓ | Security audit (owner only; result stored on the project) |
+| `POST` | `/extensions/enhance-prompt` | ✓ | Expand a short idea into a detailed prompt |
+
+</details>
+
+<details>
+<summary><strong>Community, account, health</strong></summary>
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/extensions/gallery` | | Public projects |
+| `GET` | `/extensions/shared/:id` | | A public project |
+| `POST` | `/extensions/:id/publish` | ✓ | Toggle public sharing |
+| `POST` | `/extensions/:id/upvote` | ✓ | One vote per user (`409` on repeat) |
+| `POST` | `/extensions/:id/clone` | ✓ | Clone a public project |
+| `GET` / `PUT` | `/user/profile` | ✓ | Display name |
+| `GET` | `/auth/me` | ✓ | Current user |
+| `GET` | `/health` | | `{ status, database }` |
+
+</details>
+
+## Security model
+
+- **Auth:** Supabase Auth in the browser. The API verifies every token server-side (`middleware/auth.middleware.js`). Hiding UI is never treated as authorization.
+- **Data isolation:** every owner route filters by user id (`repositories/extensions.repo.js`). RLS policies in `supabase/migrations` block anon-key access to other users' rows.
+- **Input:** UUID checks on route ids, length limits, https-only URLs for webhooks and support links, a 2 MB JSON body limit, rate limits on AI routes and all API routes.
+- **Generated code:** sanitized filenames (60 files, 512 KB per file, 4 MB total), MV3 validation, static security checks. Code is never executed on the server; JavaScript is only parsed.
+- **Preview isolation:** the preview runs in `sandbox="allow-scripts"` (opaque origin) with in-memory Chrome API mocks, so it can't reach the app's session or storage.
+- **Honest reporting:** an audit is never reported as `passed` when the AI review could not run, and it is not a certification.
+- **Headers & errors:** helmet, a CORS allowlist, and generic 5xx messages. Details go to server logs only, never secrets.
+
+## Testing
+
+```bash
 npm test
 ```
 
-### 3. Frontend
+The suite covers the sanitizer (traversal, absolute paths, NUL, size limits), the MV3 validator, the PNG and ZIP round-trip, manifest repair, provider fallback and retry, audit status logic, every route (auth, ownership, invalid ids, malformed AI output, rate limits, CORS, body limits), the Phase 2 workflows (save, preview/apply, versions, messages) and the crew (plan hand-off, fallback, single-fix rules, time budget, SSE stream). AI providers, Supabase and auth are mocked, so the suite runs offline.
+
+## Deployment
+
+The repo deploys to Vercel as-is (`vercel.json`):
+
+- **Build:** `cd frontend && npm install && npm run build` → `frontend/dist`
+- **Install:** `npm ci --prefix backend --omit=dev` (dependencies for the API function)
+- **Routing:** `/api/*` → `api/index.js` (60 s max duration); everything else → SPA `index.html`
+
+Set the backend variables and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the Vercel project, then push to `main`. In Supabase → Authentication → URL Configuration, set the Site URL to your production domain so confirmation emails link there.
+
+## Limitations
+
+- The preview is visual only. Content scripts and service workers don't run there; load the ZIP in Chrome to test behaviour.
+- Security checks are automated pattern checks, not a review or Chrome Web Store approval.
+- On free AI tiers, rate limits (for example Groq's tokens-per-minute) can make back-to-back generations wait or fail; the API reports this clearly.
+- The Testing Lab (automated Chromium runs), GitHub integration and publishing assistant are planned. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR:
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env.local   # VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-npm run dev
+npm test && npm run lint && npm run build
 ```
 
-Open `http://localhost:5173`.
+Keep UI changes consistent with [DESIGN.md](DESIGN.md), and add tests for any new route or service behaviour.
 
-### Vercel environment variables
+## License
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CORS_ORIGINS`, AI keys, and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` for the frontend build.
-
-See [EXTENSIO_UPGRADE_PLAN.md](EXTENSIO_UPGRADE_PLAN.md) for the roadmap.
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/vardhan23v/extension-AI/issues).
-
-## 📄 License
-
-This project is licensed under the MIT License.
+[MIT](LICENSE)
