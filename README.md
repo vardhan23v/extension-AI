@@ -23,6 +23,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
+[![Agent crew: CrewAI-style](https://img.shields.io/badge/Agent_crew-CrewAI--style_·_4_agents-FF5A50?style=for-the-badge&logo=crewai&logoColor=white)](#the-agent-crew)
 [![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logoColor=white)](https://groq.com/)
 [![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge)](https://openrouter.ai/)
