@@ -1,25 +1,59 @@
-# ✨ Extension AI
+<div align="center">
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
-**[🚀 View Live Demo on Vercel](https://extension-ai-five.vercel.app/)**
+# ✨ Extensio AI
 
-**Extension AI** is an intelligent web application that empowers users to build fully functional Chrome Extensions using plain English prompts. Powered by AI models (Groq, Gemini, OpenRouter), it generates and validates Manifest V3 code, provides a sandboxed visual preview, and packages the extension into a ready-to-load `.zip` file in seconds.
+### Build, edit, audit and export Chrome extensions — just by describing them.
+
+<br />
+
+[![Live Demo](https://img.shields.io/badge/🚀_LIVE_DEMO-extension--ai--five.vercel.app-4F46E5?style=for-the-badge)](https://extension-ai-five.vercel.app/)
+[![Deploy with Vercel](https://img.shields.io/badge/Deploy_with-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
+
+[![Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
+[![Tests](https://img.shields.io/badge/Backend_tests-96_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
+
+[![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-0F172A?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8)](https://tailwindcss.com/)
+[![Monaco Editor](https://img.shields.io/badge/Monaco_Editor-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://microsoft.github.io/monaco-editor/)
+
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+
+[![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logoColor=white)](https://groq.com/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge)](https://openrouter.ai/)
+
+[![Last commit](https://img.shields.io/github/last-commit/vardhan23v/extension-AI?style=for-the-badge&logo=github)](https://github.com/vardhan23v/extension-AI/commits/main)
+[![Stars](https://img.shields.io/github/stars/vardhan23v/extension-AI?style=for-the-badge&logo=github)](https://github.com/vardhan23v/extension-AI/stargazers)
+[![Issues](https://img.shields.io/github/issues/vardhan23v/extension-AI?style=for-the-badge&logo=github)](https://github.com/vardhan23v/extension-AI/issues)
+
+</div>
+
+---
+
+**Extensio AI** turns a plain-English idea into a complete, validated Manifest V3 Chrome extension project. You can edit it in a real code editor, refine it with an AI assistant that shows a diff before changing anything, run security checks, and download a ZIP that is ready for `chrome://extensions`.
 
 ## 🚀 Features
 
-- **Text-to-Extension**: Describe your idea, and the AI generates `manifest.json`, background scripts, content scripts, and popup UI.
-- **Interactive Live Preview**: Test your generated extensions in a responsive browser frame (Popup, Tablet, Full Width) right from the dashboard.
-- **Conversational Iteration**: Not quite what you wanted? Use the built-in AI Copilot chat to modify and refine the generated code.
-- **Template Gallery**: Start fast by choosing from 20+ curated extension templates across categories like Productivity, Dev Tools, and Social Media.
-- **Community Sharing**: Publish your extensions to the public gallery, upvote community creations, and clone them with one click.
-- **One-Click Download**: Instantly download your generated code as a packaged `.zip` file, ready to drop into `chrome://extensions/`.
+- **Text-to-extension**: describe the idea and get `manifest.json`, popup, scripts and generated icons.
+- **Validated output**: every result is checked for MV3 structure, missing files, remote or inline scripts and JavaScript syntax before it is saved.
+- **Code Studio**: file tree, Monaco editor, search across files, autosave, formatting and version history with restore.
+- **AI assistant with review**: ask for changes or paste an error; the assistant proposes edits as a diff you apply or discard.
+- **Security Center**: deterministic checks for broad permissions, `eval`, unsafe DOM use, CSP issues and exposed keys, plus a plain-language explanation. Not a certification.
+- **Visual preview**: popup and options pages in a sandboxed frame with simulated Chrome APIs, in light and dark mode.
+- **Templates and Community**: 20 starter prompts, plus a public gallery to share, upvote and clone extensions.
+- **One-click ZIP**: download and load with “Load unpacked”.
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React (Vite), Tailwind CSS, Framer Motion, React Router, Supabase JS (auth)
-- **Backend**: Node.js, Express (helmet, rate limiting)
-- **Database & Auth**: Supabase (Postgres + Supabase Auth, Row Level Security)
-- **AI Integration**: Groq (Llama 3.3) → Google Gemini → OpenRouter fallback chain
+- **Frontend**: React 18 (Vite), Tailwind CSS, React Router, Monaco Editor, Supabase JS (auth)
+- **Backend**: Node.js, Express (helmet, rate limiting), Jest + Supertest
+- **Database & Auth**: Supabase (Postgres, Supabase Auth, Row Level Security)
+- **AI**: Groq (`openai/gpt-oss-120b`) → Google Gemini → OpenRouter fallback chain
 - **Deployment**: Vercel
 
 ## 🧭 App overview
