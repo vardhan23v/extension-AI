@@ -40,6 +40,7 @@
 ## 🚀 Features
 
 - **Text-to-extension**: describe the idea and get `manifest.json`, popup, scripts and generated icons.
+- **Agent crew**: a Product Planner (least-privilege spec), Extension Engineer, QA Reviewer and Security Analyst build and check every project, with live progress in the builder.
 - **Validated output**: every result is checked for MV3 structure, missing files, remote or inline scripts and JavaScript syntax before it is saved.
 - **Code Studio**: file tree, Monaco editor, search across files, autosave, formatting and version history with restore.
 - **AI assistant with review**: ask for changes or paste an error; the assistant proposes edits as a diff you apply or discard.

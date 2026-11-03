@@ -67,7 +67,7 @@ export const Switch = ({ checked, onChange, label, id }) => (
   >
     <span
       className={cx(
-        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-fast',
+        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
         checked ? 'translate-x-4' : 'translate-x-0.5'
       )}
     />

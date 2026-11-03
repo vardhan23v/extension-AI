@@ -97,9 +97,9 @@ export const Tabs = ({ tabs, value, onChange, className, label, size = 'md' }) =
             onClick={() => onChange(t.id)}
             className={cx(
               'relative inline-flex shrink-0 items-center gap-1.5 font-medium transition-colors duration-fast',
-              "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:content-['']",
+              "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:transition-transform after:duration-200 after:content-['']",
               size === 'sm' ? 'h-9 px-2 text-[12px]' : 'h-10 px-2.5 text-[13px]',
-              active ? 'text-fg after:bg-primary' : 'text-muted hover:text-fg after:bg-transparent'
+              active ? 'text-fg after:scale-x-100 after:bg-primary' : 'text-muted hover:text-fg after:scale-x-0 after:bg-primary'
             )}
           >
             {t.icon && <t.icon className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -121,3 +121,6 @@ export const PageHeader = ({ title, description, actions }) => (
     {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
   </div>
 );
+
+// Inline style for list rows that fade-rise once, staggered (capped at 8 rows).
+export const staggerStyle = (index) => ({ animationDelay: `${Math.min(index, 8) * 40}ms` });

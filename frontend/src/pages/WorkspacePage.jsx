@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
-  ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, Loader2, MoreHorizontal,
+  ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, MoreHorizontal,
   ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
@@ -15,7 +15,7 @@ import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../fea
 import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
-  if (state === 'saving') return <span className="flex items-center gap-1 text-[12px] text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />Saving…</span>;
+  if (state === 'saving') return <span className="flex items-center gap-1.5 text-[12px] text-muted"><span className="h-1.5 w-1.5 rounded-full bg-primary pulse-dot" aria-hidden="true" />Saving…</span>;
   if (state === 'dirty') return <span className="text-[12px] text-muted">Unsaved changes</span>;
   if (state === 'error') {
     return (
@@ -25,7 +25,7 @@ const SaveIndicator = ({ state, error, onRetry }) => {
       </span>
     );
   }
-  return <span className="flex items-center gap-1 text-[12px] text-subtle"><Check className="h-3.5 w-3.5" aria-hidden="true" />Saved</span>;
+  return <span className="animate-in flex items-center gap-1 text-[12px] text-subtle"><Check className="h-3.5 w-3.5" aria-hidden="true" />Saved</span>;
 };
 
 const WorkspacePage = () => {
@@ -103,6 +103,7 @@ const WorkspacePage = () => {
         instruction: proposal.instruction,
         title: proposal.title,
         summary: proposal.summary,
+        trace: proposal.trace,
       });
       p.replaceFromServer(res.extension);
       await p.refreshValidation().catch(() => {});
@@ -225,7 +226,7 @@ const WorkspacePage = () => {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-surface px-2">
         <GitCompare className="h-4 w-4 text-primary" aria-hidden="true" />
-        <Select aria-label="Changed file" className="h-7 w-auto max-w-[50%] text-[12px]" value={reviewing} onChange={(e) => setReviewing(e.target.value)}>
+        <Select aria-label="Changed file" className="h-7 !w-auto max-w-[50%] text-[12px]" value={reviewing} onChange={(e) => setReviewing(e.target.value)}>
           {reviewFiles.map((f) => <option key={f} value={f}>{f}</option>)}
         </Select>
         <span className="hidden sm:inline text-[12px] text-muted">Current ← → Proposed</span>
@@ -282,7 +283,7 @@ const WorkspacePage = () => {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <h1 className="min-w-0 truncate font-display text-[15px] font-semibold tracking-display">{p.project.title}</h1>
-        <Select aria-label="Project status" className="hidden md:block h-7 w-auto text-[12px]" value={p.project.status} onChange={(e) => setStatus(e.target.value)}>
+        <Select aria-label="Project status" className="hidden md:block h-7 !w-auto text-[12px]" value={p.project.status} onChange={(e) => setStatus(e.target.value)}>
           <option value="draft">Draft</option>
           <option value="ready">Ready</option>
           <option value="archived">Archived</option>

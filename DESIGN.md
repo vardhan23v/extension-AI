@@ -42,6 +42,20 @@ Scale (rem): 0.75 · 0.8125 · 0.875 · 1 · 1.125 · 1.375 · 1.75 · 2.5 · 3.
 - Motion: 120 / 200 / 320 ms, ease-out-expo for entrances. One authored moment — the extension drawing assembles once on the landing page. Everything honours `prefers-reduced-motion`.
 - Browser surfaces are themed: selection, caret, focus ring (2px primary, 2px offset), scrollbars, link underline offset.
 
+## Motion catalogue
+
+Every animation explains a state change. All use the motion tokens and honour `prefers-reduced-motion`.
+
+| Where | What moves | Why |
+|---|---|---|
+| Route change | `.animate-page` fade-rise of the page body | Signals that the view changed |
+| AI Builder | Crew rows: waiting dot → pulsing dot + sweeping hairline → check that draws in; planner features stagger in | Shows real progress from the streamed agent events |
+| Landing drawing | Parts settle once on load; hover/focus lifts a part and highlights its callout | Teaches what each part does |
+| Landing walkthrough | Fragments reveal once on scroll (`data-reveal`) | Paces the explanation; visible without JS |
+| Lists | `.stagger-item`, 40 ms steps, capped at 8 rows | Lets the eye find the first items |
+| Assistant | Proposal card slides in; changed files stagger | Draws attention to something that needs a decision |
+| Controls | Button press scales to 0.98; switch thumb springs; tab underline grows; save dot pulses | Confirms input |
+
 ## Components
 
 - **Buttons:** primary = solid orange; secondary = surface with control border; ghost = text only. Icon-only buttons always have a label.

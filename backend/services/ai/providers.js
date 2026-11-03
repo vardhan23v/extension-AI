@@ -32,7 +32,7 @@ const retryAfterMs = (res, data) => {
 const openAiCompatible = (name, url, keyEnv, model) => ({
   name,
   isConfigured: () => Boolean(process.env[keyEnv]),
-  async complete({ system, user, json = false, maxTokens = 8000, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+  async complete({ system, user, json = false, maxTokens = 8000, timeoutMs = DEFAULT_TIMEOUT_MS, models }) {
     let res;
     try {
       res = await fetchWithTimeout(
@@ -41,7 +41,8 @@ const openAiCompatible = (name, url, keyEnv, model) => ({
           method: 'POST',
           headers: { Authorization: `Bearer ${process.env[keyEnv]}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model,
+            // Per-request override, e.g. a faster model for lightweight agents.
+            model: models?.[name] || model,
             messages: [
               { role: 'system', content: system },
               { role: 'user', content: user },
@@ -60,7 +61,7 @@ const openAiCompatible = (name, url, keyEnv, model) => ({
       // Strict JSON mode can reject long code-heavy output; the caller extracts
       // JSON from plain text anyway, so retry once without it.
       if (json && res.status === 400 && /Failed to generate JSON|json_validate_failed/i.test(JSON.stringify(data.error || ''))) {
-        return this.complete({ system, user, json: false, maxTokens, timeoutMs });
+        return this.complete({ system, user, json: false, maxTokens, timeoutMs, models });
       }
       const retryable = res.status === 429 || res.status >= 500;
       const err = new ProviderError(name, `HTTP ${res.status} ${String(data.error?.message || '').slice(0, 200)}`, { retryable });

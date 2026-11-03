@@ -112,10 +112,31 @@ const runWithRepair = async ({ system, user, seed, keepFiles }) => {
   return { ...out, provider, repaired };
 };
 
+// The Product Planner's spec, when the crew provides one.
+const planBlock = (plan) =>
+  plan
+    ? `Implementation plan from the Product Planner (follow it; only deviate if it is technically wrong):\n${JSON.stringify(plan, null, 2)}`
+    : '';
+
 const generateExtension = (prompt, options = {}) =>
   runWithRepair({
     system: buildSystemPrompt(options),
-    user: [`Build this Chrome extension:\n${prompt}`, userOptionsBlock(options)].filter(Boolean).join('\n\n'),
+    user: [`Build this Chrome extension:\n${prompt}`, planBlock(options.plan), userOptionsBlock(options)].filter(Boolean).join('\n\n'),
+  });
+
+// Asks the engineer to fix specific findings from QA or security review.
+const fixFiles = ({ prompt, files, issues, options = {}, seed }) =>
+  runWithRepair({
+    system: buildSystemPrompt(options),
+    user: [
+      `Original request: ${prompt}`,
+      `A reviewer found these problems in the extension:\n- ${issues.join('\n- ')}`,
+      'Fix every problem. Change only what is needed and keep all other behaviour.',
+      'Return the COMPLETE updated file set (all files, including unchanged ones).',
+      `Current files:\n${filesAsContext(files)}`,
+    ].join('\n\n'),
+    seed,
+    keepFiles: files.filter((f) => f.encoding === 'base64'),
   });
 
 // Edits an existing project: the current files are sent so unrelated code is preserved.
@@ -125,7 +146,7 @@ const historyBlock = (history = []) => {
   return `Recent conversation (for context):\n${recent.map((m) => `${m.role}: ${String(m.content).slice(0, 500)}`).join('\n')}`;
 };
 
-const editExtension = (extension, instruction, { kind = 'edit', history = [] } = {}) => {
+const editExtension = (extension, instruction, { kind = 'edit', history = [], plan } = {}) => {
   const task =
     kind === 'debug'
       ? `The extension below throws this error:\n${instruction}\n\nFix the cause. Change only what is needed.`
@@ -136,6 +157,7 @@ const editExtension = (extension, instruction, { kind = 'edit', history = [] } =
       `Original request: ${extension.prompt}`,
       historyBlock(history),
       task,
+      planBlock(plan),
       userOptionsBlock({ monetizationLink: extension.monetization_link }),
       `Return the COMPLETE updated file set (all files, including unchanged ones).`,
       `Current files:\n${filesAsContext(extension.files)}`,
@@ -163,4 +185,4 @@ const enhancePrompt = async (prompt) => {
   return result;
 };
 
-module.exports = { generateExtension, editExtension, enhancePrompt, GenerationError, buildSystemPrompt };
+module.exports = { generateExtension, editExtension, fixFiles, enhancePrompt, GenerationError, buildSystemPrompt };

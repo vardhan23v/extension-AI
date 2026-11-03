@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -9,6 +9,7 @@ const linkClass = ({ isActive }) =>
 
 const PublicLayout = () => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   return (
     <div className="min-h-screen flex flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-bg focus:px-3 focus:py-2">
@@ -42,7 +43,7 @@ const PublicLayout = () => {
           </div>
         </div>
       </header>
-      <main id="main" className="flex-1">
+      <main id="main" key={location.pathname} className="animate-page flex-1">
         <Outlet />
       </main>
       <footer className="border-t border-border">

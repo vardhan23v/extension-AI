@@ -8,6 +8,7 @@ const c = require('../controllers/extension.controller');
 const id = validateIdParam('id');
 
 router.post('/generate', authMiddleware, aiLimiter, c.generateExtension);
+router.post('/generate/stream', authMiddleware, aiLimiter, c.generateExtensionStream);
 router.post('/enhance-prompt', authMiddleware, aiLimiter, c.enhancePrompt);
 router.get('/my', authMiddleware, c.getUserExtensions);
 router.get('/gallery', c.getPublicGallery);

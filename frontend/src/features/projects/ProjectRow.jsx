@@ -4,11 +4,11 @@ import { MoreHorizontal } from 'lucide-react';
 import { Badge, IconButton, Menu } from '../../components/ui';
 import { timeAgo, AUDIT_STATUS, PROJECT_STATUS } from '../../lib/format';
 
-export const ProjectRow = ({ project, menuItems }) => {
+export const ProjectRow = ({ project, menuItems, index = 0 }) => {
   const audit = AUDIT_STATUS[project.auditStatus];
   const status = PROJECT_STATUS[project.status] || PROJECT_STATUS.draft;
   return (
-    <li className="group relative flex items-center gap-4 px-4 py-3.5 transition-colors duration-fast hover:bg-surface-2/60">
+    <li className="stagger-item group relative flex items-center gap-4 px-4 py-3.5 transition-colors duration-fast hover:bg-surface-2/60" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
       <div className="min-w-0 flex-1">
         <Link to={`/projects/${project.id}`} className="block truncate text-sm font-medium after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary">
           {project.title}

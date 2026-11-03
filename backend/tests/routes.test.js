@@ -1,3 +1,4 @@
+process.env.CREW_ENABLED = 'false'; // these suites test routes; the crew has its own tests
 // Route tests with the database, Supabase Auth and AI providers mocked.
 jest.mock('../repositories/extensions.repo');
 jest.mock('../repositories/messages.repo');

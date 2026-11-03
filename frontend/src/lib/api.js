@@ -1,6 +1,7 @@
 // All backend calls go through here. Response shapes are documented in
 // backend/controllers/extension.controller.js.
 import api, { AI_TIMEOUT } from '../api/axios';
+import { supabase } from './supabase';
 
 const data = (p) => p.then((r) => r.data);
 const ai = { timeout: AI_TIMEOUT };
@@ -34,6 +35,56 @@ export const projectsApi = {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
+};
+
+// Streams crew progress (Server-Sent Events) for a new project.
+// onEvent receives { type: 'agent:start' | 'agent:done', agent, role, status, ms, summary, plan }.
+// Resolves with { extension, generation }; rejects with an axios-shaped error so errorMessage() works.
+// Falls back to the non-streaming endpoint if the stream cannot be opened.
+export const createWithProgress = async (body, onEvent, { signal } = {}) => {
+  const base = import.meta.env.PROD ? '/api' : import.meta.env.VITE_API_URL || 'http://localhost:5050/api';
+  const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+  let res;
+  try {
+    res = await fetch(`${base}/extensions/generate/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    return projectsApi.create(body);
+  }
+  if (!res.ok || !res.body) {
+    if (res.status === 401 || res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      throw Object.assign(new Error(data.message || 'Request failed'), { response: { status: res.status, data } });
+    }
+    return projectsApi.create(body);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const event = block.match(/^event: (.+)$/m)?.[1];
+      const raw = block.match(/^data: (.+)$/m)?.[1];
+      if (!event || !raw) continue;
+      const data = JSON.parse(raw);
+      if (event === 'result') return data;
+      if (event === 'error') throw Object.assign(new Error(data.message), { response: { status: data.status, data } });
+      onEvent?.(data);
+    }
+  }
+  throw Object.assign(new Error('The connection closed before the extension was ready. Please try again.'), { response: { status: 502, data: {} } });
 };
 
 export const galleryApi = {

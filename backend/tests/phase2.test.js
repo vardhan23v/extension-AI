@@ -1,3 +1,4 @@
+process.env.CREW_ENABLED = 'false'; // these suites test routes; the crew has its own tests
 // Phase 2 routes: file saving, preview/apply, metadata, duplicate, messages, search.
 jest.mock('../repositories/extensions.repo');
 jest.mock('../repositories/messages.repo');

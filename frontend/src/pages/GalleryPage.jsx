@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { galleryApi, errorMessage } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import { timeAgo } from '../lib/format';
-import { Button, EmptyState, ErrorState, PageHeader, Skeleton } from '../components/ui';
+import { Button, EmptyState, ErrorState, PageHeader, Skeleton, staggerStyle } from '../components/ui';
 
 const GalleryPage = () => {
   const { isAuthenticated } = useAuth();
@@ -61,8 +61,8 @@ const GalleryPage = () => {
         <EmptyState icon={Users} title="Nothing shared yet" description="Share one of your projects from its workspace menu and it will appear here." />
       ) : (
         <ul className="divide-y divide-rule border-y border-rule">
-          {items.map((ext) => (
-            <li key={ext.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          {items.map((ext, i) => (
+            <li key={ext.id} className="stagger-item flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between" style={staggerStyle(i)}>
               <div className="min-w-0">
                 <Link to={`/shared/${ext.id}`} className="text-[15px] font-semibold hover:text-primary">{ext.title}</Link>
                 <p className="mt-0.5 line-clamp-2 max-w-2xl text-[13px] text-muted">{ext.storeAssets?.description || ext.prompt}</p>

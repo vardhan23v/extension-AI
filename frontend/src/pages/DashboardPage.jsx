@@ -65,7 +65,7 @@ const DashboardPage = () => {
             <EmptyState icon={FolderKanban} title="No projects yet" description="Your extensions will appear here." />
           ) : (
             <ul className="divide-y divide-border">
-              {projects.map((p) => <ProjectRow key={p.id} project={p} menuItems={menuItems} />)}
+              {projects.map((p, i) => <ProjectRow key={p.id} project={p} menuItems={menuItems} index={i} />)}
             </ul>
           )}
         </Card>

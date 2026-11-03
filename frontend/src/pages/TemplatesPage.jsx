@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, LayoutTemplate } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORIES, TEMPLATES } from '../data/templates';
-import { Badge, Button, Dialog, EmptyState, Input, PageHeader, Tabs } from '../components/ui';
+import { Badge, Button, Dialog, EmptyState, Input, PageHeader, Tabs, staggerStyle } from '../components/ui';
 
 const LEVEL_TONE = { Beginner: 'success', Intermediate: 'info', Advanced: 'warning' };
 
@@ -39,8 +39,8 @@ const TemplatesPage = () => {
         <EmptyState icon={LayoutTemplate} title="No templates match" description="Try another search or category." />
       ) : (
         <ul className="grid border-t border-rule md:grid-cols-2 md:gap-x-10">
-          {results.map((t) => (
-            <li key={t.title} className="flex flex-col gap-3 border-b border-rule py-5 sm:flex-row sm:items-start sm:justify-between">
+          {results.map((t, i) => (
+            <li key={`${category}-${t.title}`} className="stagger-item flex flex-col gap-3 border-b border-rule py-5 sm:flex-row sm:items-start sm:justify-between" style={staggerStyle(i)}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <h2 className="text-[15px] font-semibold">{t.title}</h2>

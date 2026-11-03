@@ -105,8 +105,8 @@ const ProjectsPage = () => {
           />
         ) : (
           <ul className={`divide-y divide-border ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            {projects.map((p) => (
-              <ProjectRow key={p.id} project={p} menuItems={menuItems} />
+            {projects.map((p, i) => (
+              <ProjectRow key={p.id} project={p} menuItems={menuItems} index={i} />
             ))}
           </ul>
         )}

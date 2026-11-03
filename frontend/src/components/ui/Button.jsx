@@ -30,7 +30,7 @@ export const Button = forwardRef(function Button(
       aria-busy={loading || undefined}
       className={cx(
         'inline-flex items-center rounded border font-medium whitespace-nowrap select-none',
-        'transition-colors duration-fast disabled:opacity-50 disabled:pointer-events-none',
+        'transition-[color,background-color,border-color,transform] duration-fast active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none',
         VARIANTS[variant],
         SIZES[size],
         className

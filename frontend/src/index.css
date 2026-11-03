@@ -137,7 +137,81 @@
   animation: fade-in var(--dur) var(--ease-out);
 }
 
+/* Page entrance: a short fade-rise when the route changes. */
+.animate-page {
+  animation: fade-in var(--dur-slow) var(--ease-out);
+}
+
+/* Lists: rows fade-rise once, staggered (delay set inline, capped). */
+.stagger-item {
+  animation: fade-in var(--dur-slow) var(--ease-out) both;
+}
+
+/* Slide in from the side (assistant proposal card). */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+.animate-slide {
+  animation: slide-in var(--dur-slow) var(--ease-out) both;
+}
+
+/* Running agent: a hairline that sweeps under the row. */
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.progress-sweep {
+  animation: sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* A check mark that draws itself. */
+@keyframes draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+.draw-check {
+  stroke-dasharray: 24;
+  animation: draw var(--dur-slow) var(--ease-out) both;
+}
+
+/* Pulsing status dot (saving). */
+@keyframes soft-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse-dot {
+  animation: soft-pulse 1s ease-in-out infinite;
+}
+
+/* Scroll reveal: only hides content once JS has marked the page ready,
+   so everything stays visible without JavaScript. */
+.js-reveal [data-reveal] {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+.js-reveal [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .js-reveal [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
   *,
   *::before,
   *::after {

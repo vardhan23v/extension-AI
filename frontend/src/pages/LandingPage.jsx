@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, ChevronRight, Download } from 'lucide-react';
 import ExtensionAnatomy from '../components/illustrations/ExtensionAnatomy';
+import { useReveal } from '../lib/useReveal';
 
 // Small, real-looking fragments of the product for the walkthrough strip.
 const Fragment = ({ title, children }) => (
@@ -66,8 +67,10 @@ const STAGES = [
   },
 ];
 
-const LandingPage = () => (
-  <>
+const LandingPage = () => {
+  const revealRef = useReveal();
+  return (
+  <div ref={revealRef}>
     <section className="border-b border-rule">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:py-20 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div>
@@ -99,7 +102,7 @@ const LandingPage = () => (
     </section>
 
     <section aria-labelledby="flow-heading" className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
-      <h2 id="flow-heading" className="font-display text-[1.75rem] font-semibold tracking-display">
+      <h2 id="flow-heading" data-reveal className="font-display text-[1.75rem] font-semibold tracking-display">
         From a sentence to a ZIP
       </h2>
       <p className="mt-2 max-w-2xl text-muted">
@@ -108,7 +111,7 @@ const LandingPage = () => (
       </p>
       <ol className="mt-10 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
         {STAGES.map((s, i) => (
-          <li key={s.title} className="relative flex">
+          <li key={s.title} data-reveal className="relative flex" style={{ transitionDelay: `${i * 70}ms` }}>
             <Fragment title={s.title}>{s.body}</Fragment>
             {i < STAGES.length - 1 && (
               <ChevronRight className="absolute -right-3.5 top-[55%] hidden h-4 w-4 text-subtle lg:block" aria-hidden="true" />
@@ -119,7 +122,7 @@ const LandingPage = () => (
     </section>
 
     <section className="border-t border-rule bg-surface-2/50">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-2">
+      <div data-reveal className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-2">
         <div>
           <h2 className="font-display text-[1.375rem] font-semibold tracking-display">What it is honest about</h2>
           <p className="mt-2 max-w-md text-muted">The tool tells you what it checked and what it couldn’t.</p>
@@ -140,7 +143,8 @@ const LandingPage = () => (
         </ul>
       </div>
     </section>
-  </>
-);
+  </div>
+  );
+};
 
 export default LandingPage;

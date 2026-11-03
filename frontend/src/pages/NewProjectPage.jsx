@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { ChevronDown, LayoutTemplate, Sparkles, Wand2, AlertTriangle } from 'lucide-react';
-import { projectsApi, errorMessage, errorDetails } from '../lib/api';
+import { projectsApi, createWithProgress, errorMessage, errorDetails } from '../lib/api';
+import { CrewProgress } from '../features/crew/CrewProgress';
 import { Button, Card, Field, Input, PageHeader, Switch, Textarea } from '../components/ui';
 
 const LANGUAGES = [
@@ -10,7 +11,6 @@ const LANGUAGES = [
   ['hi', 'Hindi'], ['ja', 'Japanese'], ['zh_CN', 'Chinese (Simplified)'],
 ];
 
-const STAGES = ['Planning the extension', 'Writing the files', 'Validating Manifest V3', 'Saving the project'];
 
 const httpsOrEmpty = (v) => !v || /^https:\/\/[^\s]+$/i.test(v);
 
@@ -24,16 +24,9 @@ const NewProjectPage = () => {
   const [i18n, setI18n] = useState({ on: false, langs: ['en'] });
   const [busy, setBusy] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
-  const [stage, setStage] = useState(0);
+  const [agents, setAgents] = useState({});
+  const [plan, setPlan] = useState(null);
   const [failure, setFailure] = useState(null);
-
-  // Advance the status label while waiting; the request itself has no progress events.
-  useEffect(() => {
-    if (!busy) return undefined;
-    setStage(0);
-    const t = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 5000);
-    return () => clearInterval(t);
-  }, [busy]);
 
   const supportError = support.on && !httpsOrEmpty(support.url) ? 'Must be an https:// URL' : null;
   const webhookError = webhook.on && !httpsOrEmpty(webhook.url) ? 'Must be an https:// URL' : null;
@@ -56,12 +49,18 @@ const NewProjectPage = () => {
     setBusy(true);
     setFailure(null);
     try {
-      const { extension, generation } = await projectsApi.create({
+      setAgents({});
+      setPlan(null);
+      const onEvent = (e) => {
+        setAgents((prev) => ({ ...prev, [e.agent]: e.type === 'agent:start' ? { status: 'running' } : { status: e.status, ms: e.ms, summary: e.summary } }));
+        if (e.plan) setPlan(e.plan);
+      };
+      const { extension, generation } = await createWithProgress({
         prompt: prompt.trim(),
         monetizationLink: support.on && support.url ? support.url : null,
         webhookUrl: webhook.on && webhook.url ? webhook.url : null,
         languages: i18n.on ? i18n.langs : [],
-      });
+      }, onEvent);
       if (generation?.warnings?.length) toast(`${generation.warnings.length} validation warning(s) — see the Problems tab.`);
       navigate(`/projects/${extension.id}`, { replace: true });
     } catch (err) {
@@ -173,6 +172,12 @@ const NewProjectPage = () => {
           )}
         </Card>
 
+        {(busy || Object.keys(agents).length > 0) && (
+          <div className="mt-4 animate-in">
+            <CrewProgress agents={agents} plan={plan} />
+          </div>
+        )}
+
         {failure && (
           <div role="alert" className="mt-4 rounded-lg border border-danger/30 bg-danger/5 p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-danger">
@@ -188,7 +193,7 @@ const NewProjectPage = () => {
 
         <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[13px] text-muted" aria-live="polite">
-            {busy ? `${STAGES[stage]}… this usually takes 10–40 seconds.` : 'Generated code is validated before it is saved.'}
+            {busy ? 'Your crew is working — this usually takes 15–40 seconds.' : 'A planner, engineer, QA reviewer and security analyst build and check every project.'}
           </p>
           <Button type="submit" variant="primary" size="lg" loading={busy} disabled={!prompt.trim() || !!supportError || !!webhookError}>
             {!busy && <Sparkles className="h-4 w-4" aria-hidden="true" />}

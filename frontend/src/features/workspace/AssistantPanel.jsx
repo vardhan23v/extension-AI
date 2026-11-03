@@ -4,6 +4,7 @@ import { Bot, Bug, Send, GitCompare, Check, X, AlertTriangle } from 'lucide-reac
 import { projectsApi, errorMessage, errorDetails } from '../../lib/api';
 import { timeAgo } from '../../lib/format';
 import { Badge, Button, Spinner, Tabs, Textarea, cx } from '../../components/ui';
+import { CrewTrace } from '../crew/CrewProgress';
 
 const SUGGESTIONS = ['Add a dark mode toggle to the popup', 'Add an options page', 'Remove permissions the code does not use', 'Add a keyboard shortcut'];
 
@@ -16,8 +17,8 @@ const ChangeList = ({ changes }) => {
   if (!rows.length) return <p className="text-[12px] text-muted">No file changes.</p>;
   return (
     <ul className="space-y-0.5">
-      {rows.map(([kind, f]) => (
-        <li key={f} className="flex items-center gap-2 font-mono text-[12px]">
+      {rows.map(([kind, f], i) => (
+        <li key={f} className="stagger-item flex items-center gap-2 font-mono text-[12px]" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
           <span className={cx('w-3 text-center', kind === 'added' ? 'text-success' : kind === 'removed' ? 'text-danger' : 'text-warning')}>
             {kind === 'added' ? '+' : kind === 'removed' ? '−' : '~'}
           </span>
@@ -29,10 +30,11 @@ const ChangeList = ({ changes }) => {
 };
 
 const Message = ({ m }) => (
-  <li className={cx('flex flex-col gap-1', m.role === 'user' ? 'items-end' : 'items-start')}>
+  <li className={cx('animate-in flex flex-col gap-1', m.role === 'user' ? 'items-end' : 'items-start')}>
     <div className={cx('max-w-[92%] rounded-lg px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap', m.role === 'user' ? 'bg-primary-soft text-fg' : 'border border-border bg-bg')}>
       {m.content}
-      {m.meta?.changes && <div className="mt-2 border-t border-border pt-2"><ChangeList changes={m.meta.changes} /></div>}
+      {m.meta?.changes && <div className="mt-2 border-t border-rule pt-2"><ChangeList changes={m.meta.changes} /></div>}
+      <CrewTrace trace={m.meta?.trace} />
     </div>
     {m.createdAt && <span className="text-[11px] text-subtle">{timeAgo(m.createdAt)}</span>}
   </li>
@@ -77,7 +79,7 @@ export const AssistantPanel = ({ projectId, proposal, setProposal, onReview, onA
     try {
       await beforeRequest();
       const res = mode === 'fix' ? await projectsApi.debug(projectId, text) : await projectsApi.edit(projectId, text);
-      setProposal({ ...res.proposal, changes: res.changes, summary: res.generation?.summary, warnings: res.generation?.warnings || [] });
+      setProposal({ ...res.proposal, changes: res.changes, summary: res.generation?.summary, warnings: res.generation?.warnings || [], trace: res.generation?.trace || [] });
       setInput('');
     } catch (err) {
       setFailure({ message: errorMessage(err, 'The assistant could not complete this request.'), details: errorDetails(err) });
@@ -92,7 +94,7 @@ export const AssistantPanel = ({ projectId, proposal, setProposal, onReview, onA
       setMessages((ms) => [
         ...ms,
         { id: `u${Date.now()}`, role: 'user', content: proposal.instruction },
-        { id: `a${Date.now()}`, role: 'assistant', content: proposal.summary || 'Applied the changes.', meta: { changes: res.changes } },
+        { id: `a${Date.now()}`, role: 'assistant', content: proposal.summary || 'Applied the changes.', meta: { changes: res.changes, trace: proposal.trace } },
       ]);
     }
   };
@@ -129,12 +131,12 @@ export const AssistantPanel = ({ projectId, proposal, setProposal, onReview, onA
 
         {busy && (
           <li>
-            <Spinner label={mode === 'fix' ? 'Diagnosing and preparing a fix…' : 'Preparing changes…'} />
+            <Spinner label={mode === 'fix' ? 'The crew is diagnosing the error and preparing a fix…' : 'The crew is planning, editing and reviewing the change…'} />
           </li>
         )}
 
         {proposal && (
-          <li className="rounded-lg border border-primary/40 bg-primary-soft/40 p-3">
+          <li className="animate-slide rounded-lg border border-primary/40 bg-primary-soft/40 p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[13px] font-semibold">Proposed changes</span>
               <Badge tone="primary">Not saved yet</Badge>
@@ -142,6 +144,7 @@ export const AssistantPanel = ({ projectId, proposal, setProposal, onReview, onA
             <p className="mt-1 text-[13px] text-muted">{proposal.instruction}</p>
             {proposal.summary && <p className="mt-2 text-[13px]">{proposal.summary}</p>}
             <div className="mt-2"><ChangeList changes={proposal.changes} /></div>
+            <CrewTrace trace={proposal.trace} />
             {proposal.warnings.length > 0 && (
               <p className="mt-2 text-[12px] text-warning">{proposal.warnings.length} validation warning(s)</p>
             )}

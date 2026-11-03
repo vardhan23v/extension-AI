@@ -4,7 +4,8 @@ const { sanitizeFiles, SanitizeError } = require('../utils/sanitize');
 const { injectMissingIcons } = require('../services/icons.service');
 const { validateExtension } = require('../services/validator.service');
 const { diffSummary } = require('../utils/diff');
-const { generateExtension: runGeneration, editExtension, enhancePrompt: runEnhance, GenerationError } = require('../services/generation.service');
+const { enhancePrompt: runEnhance, GenerationError } = require('../services/generation.service');
+const { runCrew } = require('../services/crew/crew');
 const { auditExtension: runAudit } = require('../services/security/audit.service');
 const { createZipBuffer } = require('../services/zipper.service');
 const { safeDownloadName } = require('../utils/sanitize');
@@ -28,12 +29,23 @@ const toClient = (ext) => ({
   updatedAt: ext.updated_at,
 });
 
-const generationMeta = (result) => ({
-  provider: result.provider,
-  summary: result.summary,
-  warnings: result.validation.warnings,
-  repaired: result.repaired,
+const generationMeta = (crew) => ({
+  provider: crew.result.provider,
+  summary: crew.result.summary,
+  warnings: crew.result.validation.warnings,
+  repaired: crew.result.repaired,
+  plan: crew.plan,
+  trace: crew.trace,
 });
+
+// Trace entries a client may echo back on apply; keep them small and well-formed.
+const cleanTrace = (trace) =>
+  Array.isArray(trace)
+    ? trace
+        .filter((t) => t && typeof t.agent === 'string')
+        .slice(0, 8)
+        .map((t) => ({ agent: t.agent.slice(0, 20), role: String(t.role || '').slice(0, 40), status: String(t.status || '').slice(0, 12), ms: Number(t.ms) || 0, summary: String(t.summary || '').slice(0, 200) }))
+    : undefined;
 
 const handleGenerationError = (err, res, next) => {
   if (err instanceof GenerationError) {
@@ -42,31 +54,63 @@ const handleGenerationError = (err, res, next) => {
   return next(err);
 };
 
+// Validates the request, runs the crew and saves the project.
+const createFromPrompt = async (req, onEvent) => {
+  const prompt = requireText(req.body.prompt, 'a prompt', MAX_PROMPT);
+  const monetizationLink = parseOptionalHttpsUrl(req.body.monetizationLink, 'Monetization link');
+  const webhookUrl = parseOptionalHttpsUrl(req.body.webhookUrl, 'Webhook URL');
+  const languages = Array.isArray(req.body.languages)
+    ? req.body.languages.filter((l) => typeof l === 'string' && LANGUAGE_RE.test(l)).slice(0, 10)
+    : [];
+
+  const crew = await runCrew({ kind: 'create', prompt, options: { monetizationLink, webhookUrl, languages }, onEvent });
+  const { result } = crew;
+
+  const ext = await repo.create({
+    user_id: req.user.userId,
+    title: result.title,
+    prompt,
+    description: crew.plan?.summary || '',
+    files: result.files,
+    monetization_link: monetizationLink,
+    store_assets: { description: result.storeDescription || '' },
+    iteration_history: [{ prompt, timestamp: new Date().toISOString() }],
+  });
+  return { extension: toClient(ext), generation: generationMeta(crew) };
+};
+
 const generateExtension = async (req, res, next) => {
   try {
-    const prompt = requireText(req.body.prompt, 'a prompt', MAX_PROMPT);
-    const monetizationLink = parseOptionalHttpsUrl(req.body.monetizationLink, 'Monetization link');
-    const webhookUrl = parseOptionalHttpsUrl(req.body.webhookUrl, 'Webhook URL');
-    const languages = Array.isArray(req.body.languages)
-      ? req.body.languages.filter((l) => typeof l === 'string' && LANGUAGE_RE.test(l)).slice(0, 10)
-      : [];
-
-    const result = await runGeneration(prompt, { monetizationLink, webhookUrl, languages });
-
-    const ext = await repo.create({
-      user_id: req.user.userId,
-      title: result.title,
-      prompt,
-      files: result.files,
-      monetization_link: monetizationLink,
-      store_assets: { description: result.storeDescription || '' },
-      iteration_history: [{ prompt, timestamp: new Date().toISOString() }],
-    });
-
-    res.status(201).json({ success: true, extension: toClient(ext), generation: generationMeta(result) });
+    const out = await createFromPrompt(req);
+    res.status(201).json({ success: true, ...out });
   } catch (err) {
     handleGenerationError(err, res, next);
   }
+};
+
+// Same as generateExtension, but streams each agent's progress as Server-Sent Events.
+const generateExtensionStream = async (req, res) => {
+  res.status(200).set({
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders?.();
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  try {
+    const out = await createFromPrompt(req, (e) => send(e.type, e));
+    send('result', { success: true, ...out });
+  } catch (err) {
+    const status = err instanceof GenerationError ? err.status : err.status && err.status < 500 ? err.status : 500;
+    if (status >= 500 && !(err instanceof GenerationError)) console.error('Stream generation error:', err.message);
+    send('error', {
+      status,
+      message: status >= 500 && !(err instanceof GenerationError) ? 'Something went wrong. Please try again.' : err.message,
+      ...(err instanceof GenerationError ? err.details || {} : {}),
+    });
+  }
+  res.end();
 };
 
 const downloadExtension = async (req, res, next) => {
@@ -136,7 +180,8 @@ const applyEdit = (kind) => async (req, res, next) => {
     } catch (e) {
       console.error('Loading conversation failed:', e.message);
     }
-    const result = await editExtension(ext, instruction, { kind, history });
+    const crew = await runCrew({ kind: kind === 'debug' ? 'debug' : 'edit', extension: ext, instruction, history });
+    const { result } = crew;
     const changes = diffSummary(ext.files, result.files);
     const historyPrompt = kind === 'debug' ? `DEBUG: ${instruction}` : instruction;
 
@@ -145,7 +190,7 @@ const applyEdit = (kind) => async (req, res, next) => {
         success: true,
         proposal: { title: result.title, files: result.files, instruction: historyPrompt },
         changes,
-        generation: generationMeta(result),
+        generation: generationMeta(crew),
       });
     }
 
@@ -156,10 +201,10 @@ const applyEdit = (kind) => async (req, res, next) => {
     });
     await logMessages(ext.id, [
       { role: 'user', content: historyPrompt },
-      { role: 'assistant', content: result.summary || 'Applied the requested changes.', meta: { changes, provider: result.provider } },
+      { role: 'assistant', content: result.summary || 'Applied the requested changes.', meta: { changes, provider: result.provider, trace: crew.trace } },
     ]);
 
-    res.status(200).json({ success: true, extension: toClient(updated), changes, generation: generationMeta(result) });
+    res.status(200).json({ success: true, extension: toClient(updated), changes, generation: generationMeta(crew) });
   } catch (err) {
     handleGenerationError(err, res, next);
   }
@@ -181,7 +226,7 @@ const applyProposal = async (req, res, next) => {
     const summary = typeof req.body.summary === 'string' ? req.body.summary.slice(0, 2000) : '';
     await logMessages(ext.id, [
       { role: 'user', content: instruction },
-      { role: 'assistant', content: summary || 'Applied the proposed changes.', meta: { changes } },
+      { role: 'assistant', content: summary || 'Applied the proposed changes.', meta: { changes, trace: cleanTrace(req.body.trace) } },
     ]);
     res.json({ success: true, extension: toClient(updated), changes });
   } catch (err) {
@@ -479,6 +524,7 @@ const getSharedExtension = async (req, res, next) => {
 
 module.exports = {
   generateExtension,
+  generateExtensionStream,
   downloadExtension,
   iterateExtension: applyEdit('edit'),
   applyProposal,
