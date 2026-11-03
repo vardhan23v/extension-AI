@@ -31,6 +31,15 @@ app.use(
   })
 );
 app.use(express.json({ limit: '2mb' }));
+
+// Development request log: method, path, status and duration only (no bodies or headers).
+if (isDev) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => console.log(`${req.method} ${req.originalUrl.split('?')[0]} ${res.statusCode} ${Date.now() - start}ms`));
+    next();
+  });
+}
 app.use('/api', apiLimiter);
 
 // Routes

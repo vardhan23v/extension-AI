@@ -22,6 +22,15 @@
 - **AI Integration**: Groq (Llama 3.3) → Google Gemini → OpenRouter fallback chain
 - **Deployment**: Vercel
 
+## 🧭 App overview
+
+- **Dashboard** — recent projects and a quick prompt box
+- **AI Builder** (`/new`) — describe an extension (optional support link, webhook, translations)
+- **My Projects** — search, filter by status, rename, duplicate, download, delete
+- **Code Studio** (`/projects/:id`) — file tree, Monaco editor with autosave, AI assistant that proposes changes as a reviewable diff, visual preview, problems list, version history with restore, security audit
+- **Security Center** — audit status across all projects
+- **Templates**, **Community**, **Settings**
+
 ## 🔒 What happens to generated code
 
 1. The AI output is parsed and every filename is checked (no absolute paths, `..`, or unexpected file types).
@@ -42,7 +51,12 @@ The in-app preview is a visual mock only (sandboxed iframe, mocked Chrome APIs).
 
 ### 1. Database
 
-Run `supabase/migrations/20261103000000_init.sql` in the Supabase SQL editor (or `supabase db push`). Rollback: `supabase/rollbacks/20261103000000_init.down.sql`.
+Run the files in `supabase/migrations/` in order in the Supabase SQL editor (or `supabase db push`):
+
+1. `20261103000000_init.sql` — users' projects, versions, upvotes
+2. `20261104000000_phase2.sql` — project status/description, saved audits, assistant conversations
+
+Rollbacks live in `supabase/rollbacks/`. In Supabase → Authentication → URL Configuration, set the Site URL to your deployed URL so confirmation emails link there.
 
 ### 2. Backend
 
@@ -64,16 +78,6 @@ npm run dev
 ```
 
 Open `http://localhost:5173`.
-
-### Migrating from MongoDB
-
-Existing MongoDB users and extensions can be copied to Supabase (passwords are preserved; MongoDB is only read):
-
-```bash
-cd backend
-npm run migrate:mongo            # dry run
-npm run migrate:mongo -- --apply
-```
 
 ### Vercel environment variables
 

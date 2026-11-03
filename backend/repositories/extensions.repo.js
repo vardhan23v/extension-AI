@@ -20,15 +20,21 @@ const findById = async (id) =>
 const findOwned = async (id, userId) =>
   unwrap(await getSupabase().from('extensions').select('*').eq('id', id).eq('user_id', userId).maybeSingle());
 
-const listByUser = async (userId, { limit = 50, offset = 0 } = {}) =>
-  unwrap(
-    await getSupabase()
-      .from('extensions')
-      .select('id, title, prompt, files, is_public, created_at, updated_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-  );
+const listByUser = async (userId, { limit = 50, offset = 0, q, status } = {}) => {
+  let query = getSupabase()
+    .from('extensions')
+    .select('id, title, prompt, description, status, files, is_public, last_audit, created_at, updated_at', { count: 'exact' })
+    .eq('user_id', userId);
+  if (status) query = query.eq('status', status);
+  if (q) {
+    // Escape PostgREST/LIKE special characters in user search text.
+    const term = q.replace(/[%_\\,()*]/g, ' ').trim();
+    if (term) query = query.or(`title.ilike.%${term}%,prompt.ilike.%${term}%`);
+  }
+  const { data, error, count } = await query.order('updated_at', { ascending: false }).range(offset, offset + limit - 1);
+  unwrap({ data, error });
+  return { rows: data, total: count ?? data.length };
+};
 
 const listPublic = async ({ limit = 50, offset = 0 } = {}) =>
   unwrap(

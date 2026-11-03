@@ -1,4 +1,9 @@
 const repo = require('../repositories/extensions.repo');
+const messages = require('../repositories/messages.repo');
+const { sanitizeFiles, SanitizeError } = require('../utils/sanitize');
+const { injectMissingIcons } = require('../services/icons.service');
+const { validateExtension } = require('../services/validator.service');
+const { diffSummary } = require('../utils/diff');
 const { generateExtension: runGeneration, editExtension, enhancePrompt: runEnhance, GenerationError } = require('../services/generation.service');
 const { auditExtension: runAudit } = require('../services/security/audit.service');
 const { createZipBuffer } = require('../services/zipper.service');
@@ -15,6 +20,9 @@ const toClient = (ext) => ({
   storeAssets: ext.store_assets || {},
   files: ext.files,
   isPublic: ext.is_public,
+  status: ext.status || 'draft',
+  description: ext.description || '',
+  lastAudit: ext.last_audit || null,
   iterationHistory: ext.iteration_history || [],
   createdAt: ext.created_at,
   updatedAt: ext.updated_at,
@@ -78,7 +86,40 @@ const downloadExtension = async (req, res, next) => {
   }
 };
 
-// Shared flow for conversational edits and debug fixes: snapshot, edit, save.
+// Validates client-supplied files with the same rules as AI output.
+const prepareFiles = (files, seed) => {
+  if (!Array.isArray(files)) throw Object.assign(new Error('files must be an array'), { status: 400 });
+  try {
+    const safe = injectMissingIcons(sanitizeFiles(files), seed);
+    return { files: safe, validation: validateExtension(safe) };
+  } catch (e) {
+    if (e instanceof SanitizeError) throw Object.assign(new Error(e.message), { status: 400 });
+    throw e;
+  }
+};
+
+const logMessages = async (extensionId, entries) => {
+  try {
+    await messages.add(extensionId, entries);
+  } catch (e) {
+    // Conversation history is helpful but must not fail the edit itself.
+    console.error('Failed to save conversation:', e.message);
+  }
+};
+
+// Snapshot current files, save new ones, and append to iteration history.
+const saveNewFiles = async (ext, userId, files, { historyPrompt, title, note }) => {
+  await repo.addVersion(ext.id, ext.files, note);
+  const patch = { files };
+  if (title) patch.title = title;
+  if (historyPrompt) {
+    patch.iteration_history = [...(ext.iteration_history || []), { prompt: historyPrompt, timestamp: new Date().toISOString() }];
+  }
+  return repo.updateOwned(ext.id, userId, patch);
+};
+
+// Conversational edits and debug fixes. With { preview: true } the result is
+// returned as a proposal and nothing is saved until POST /:id/apply.
 const applyEdit = (kind) => async (req, res, next) => {
   try {
     const instruction =
@@ -89,19 +130,155 @@ const applyEdit = (kind) => async (req, res, next) => {
     const ext = await repo.findOwned(req.params.id, req.user.userId);
     if (!ext) return res.status(404).json({ message: 'Extension not found' });
 
-    const result = await editExtension(ext, instruction, { kind });
-
+    let history = [];
+    try {
+      history = (await messages.list(ext.id, { limit: 20 })) || [];
+    } catch (e) {
+      console.error('Loading conversation failed:', e.message);
+    }
+    const result = await editExtension(ext, instruction, { kind, history });
+    const changes = diffSummary(ext.files, result.files);
     const historyPrompt = kind === 'debug' ? `DEBUG: ${instruction}` : instruction;
-    await repo.addVersion(ext.id, ext.files, `Before: ${historyPrompt.slice(0, 200)}`);
-    const updated = await repo.updateOwned(ext.id, req.user.userId, {
-      title: result.title,
-      files: result.files,
-      iteration_history: [...(ext.iteration_history || []), { prompt: historyPrompt, timestamp: new Date().toISOString() }],
-    });
 
-    res.status(200).json({ success: true, extension: toClient(updated), generation: generationMeta(result) });
+    if (req.body.preview === true) {
+      return res.status(200).json({
+        success: true,
+        proposal: { title: result.title, files: result.files, instruction: historyPrompt },
+        changes,
+        generation: generationMeta(result),
+      });
+    }
+
+    const updated = await saveNewFiles(ext, req.user.userId, result.files, {
+      historyPrompt,
+      title: result.title,
+      note: `Before: ${historyPrompt.slice(0, 200)}`,
+    });
+    await logMessages(ext.id, [
+      { role: 'user', content: historyPrompt },
+      { role: 'assistant', content: result.summary || 'Applied the requested changes.', meta: { changes, provider: result.provider } },
+    ]);
+
+    res.status(200).json({ success: true, extension: toClient(updated), changes, generation: generationMeta(result) });
   } catch (err) {
     handleGenerationError(err, res, next);
+  }
+};
+
+// Applies a previously previewed AI proposal (re-validated server-side).
+const applyProposal = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const instruction = requireText(req.body.instruction, 'the instruction', MAX_PROMPT);
+    const { files, validation } = prepareFiles(req.body.files, ext.title);
+    if (validation.errors.length) {
+      return res.status(422).json({ message: 'The proposed changes did not pass validation.', ...validation, manifest: undefined });
+    }
+    const changes = diffSummary(ext.files, files);
+    const title = typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim().slice(0, 200) : undefined;
+    const updated = await saveNewFiles(ext, req.user.userId, files, { historyPrompt: instruction, title, note: `Before: ${instruction.slice(0, 200)}` });
+    const summary = typeof req.body.summary === 'string' ? req.body.summary.slice(0, 2000) : '';
+    await logMessages(ext.id, [
+      { role: 'user', content: instruction },
+      { role: 'assistant', content: summary || 'Applied the proposed changes.', meta: { changes } },
+    ]);
+    res.json({ success: true, extension: toClient(updated), changes });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Manual edits from the code editor. Validation problems are reported but do
+// not block saving, since work in progress is often temporarily invalid.
+const saveFiles = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const { files, validation } = prepareFiles(req.body.files, ext.title);
+    const changes = diffSummary(ext.files, files);
+    if (!changes.added.length && !changes.removed.length && !changes.changed.length) {
+      return res.json({ success: true, extension: toClient(ext), validation: { errors: validation.errors, warnings: validation.warnings }, changes });
+    }
+    // Snapshot at most once every 10 minutes for autosave bursts.
+    const versions = await repo.listVersions(ext.id);
+    const recent = versions[0] && Date.now() - new Date(versions[0].created_at).getTime() < 10 * 60 * 1000;
+    if (!recent) await repo.addVersion(ext.id, ext.files, 'Before manual edits');
+    const updated = await repo.updateOwned(ext.id, req.user.userId, { files });
+    res.json({ success: true, extension: toClient(updated), validation: { errors: validation.errors, warnings: validation.warnings }, changes });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const validateProject = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const { errors, warnings } = validateExtension(ext.files);
+    res.json({ success: true, validation: { errors, warnings } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const STATUSES = new Set(['draft', 'ready', 'archived']);
+
+const updateMeta = async (req, res, next) => {
+  try {
+    const patch = {};
+    if (req.body.title !== undefined) patch.title = requireText(req.body.title, 'a title', 200);
+    if (req.body.description !== undefined) {
+      if (typeof req.body.description !== 'string' || req.body.description.length > 1000) {
+        return res.status(400).json({ message: 'Description must be at most 1000 characters' });
+      }
+      patch.description = req.body.description.trim();
+    }
+    if (req.body.status !== undefined) {
+      if (!STATUSES.has(req.body.status)) return res.status(400).json({ message: 'Invalid status' });
+      patch.status = req.body.status;
+    }
+    if (!Object.keys(patch).length) return res.status(400).json({ message: 'Nothing to update' });
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const updated = await repo.updateOwned(ext.id, req.user.userId, patch);
+    res.json({ success: true, extension: toClient(updated) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const duplicateExtension = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const copy = await repo.create({
+      user_id: req.user.userId,
+      title: `${ext.title} (Copy)`.slice(0, 200),
+      prompt: ext.prompt,
+      description: ext.description || '',
+      files: ext.files,
+      store_assets: ext.store_assets || {},
+      monetization_link: ext.monetization_link,
+      iteration_history: [{ prompt: `Duplicated from "${ext.title}"`, timestamp: new Date().toISOString() }],
+    });
+    res.status(201).json({ success: true, extension: toClient(copy) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getMessages = async (req, res, next) => {
+  try {
+    const ext = await repo.findOwned(req.params.id, req.user.userId);
+    if (!ext) return res.status(404).json({ message: 'Extension not found' });
+    const rows = await messages.list(ext.id);
+    res.json({
+      success: true,
+      messages: rows.map((m) => ({ id: m.id, role: m.role, content: m.content, meta: m.meta, createdAt: m.created_at })),
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -109,7 +286,8 @@ const getExtension = async (req, res, next) => {
   try {
     const ext = await repo.findOwned(req.params.id, req.user.userId);
     if (!ext) return res.status(404).json({ message: 'Extension not found' });
-    res.json({ success: true, extension: toClient(ext) });
+    const { errors, warnings } = validateExtension(ext.files);
+    res.json({ success: true, extension: toClient(ext), validation: { errors, warnings } });
   } catch (err) {
     next(err);
   }
@@ -117,15 +295,23 @@ const getExtension = async (req, res, next) => {
 
 const getUserExtensions = async (req, res, next) => {
   try {
-    const rows = await repo.listByUser(req.user.userId, { limit: 100 });
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 100) : undefined;
+    const status = STATUSES.has(req.query.status) ? req.query.status : undefined;
+    const { rows, total } = await repo.listByUser(req.user.userId, { limit, offset, q, status });
     res.status(200).json({
       success: true,
+      total,
       extensions: rows.map((ext) => ({
         id: ext.id,
         title: ext.title,
         prompt: ext.prompt,
+        description: ext.description || '',
+        status: ext.status || 'draft',
         fileCount: Array.isArray(ext.files) ? ext.files.length : 0,
         isPublic: ext.is_public,
+        auditStatus: ext.last_audit?.status || null,
         createdAt: ext.created_at,
         updatedAt: ext.updated_at,
       })),
@@ -245,6 +431,8 @@ const auditExtension = async (req, res, next) => {
     const ext = await repo.findOwned(req.params.id, req.user.userId);
     if (!ext) return res.status(404).json({ message: 'Extension not found' });
     const audit = await runAudit(ext.files);
+    const lastAudit = { status: audit.status, counts: audit.counts, at: new Date().toISOString() };
+    await repo.updateOwned(ext.id, req.user.userId, { last_audit: lastAudit }).catch((e) => console.error('Saving audit failed:', e.message));
     res.status(200).json({ success: true, audit });
   } catch (err) {
     next(err);
@@ -293,6 +481,12 @@ module.exports = {
   generateExtension,
   downloadExtension,
   iterateExtension: applyEdit('edit'),
+  applyProposal,
+  saveFiles,
+  validateProject,
+  updateMeta,
+  duplicateExtension,
+  getMessages,
   debugExtension: applyEdit('debug'),
   getExtension,
   getUserExtensions,

@@ -16,6 +16,12 @@ router.get('/download/:id', id, authMiddleware, c.downloadExtension);
 router.post('/iterate/:id', id, authMiddleware, aiLimiter, c.iterateExtension);
 
 router.get('/:id', id, authMiddleware, c.getExtension);
+router.patch('/:id', id, authMiddleware, c.updateMeta);
+router.put('/:id/files', id, authMiddleware, c.saveFiles);
+router.post('/:id/validate', id, authMiddleware, c.validateProject);
+router.post('/:id/apply', id, authMiddleware, c.applyProposal);
+router.post('/:id/duplicate', id, authMiddleware, c.duplicateExtension);
+router.get('/:id/messages', id, authMiddleware, c.getMessages);
 router.delete('/:id', id, authMiddleware, c.deleteExtension);
 router.get('/:id/versions', id, authMiddleware, c.listVersions);
 router.post('/:id/versions/:versionId/restore', validateIdParam('id', 'versionId'), authMiddleware, c.restoreVersion);

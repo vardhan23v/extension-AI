@@ -1,5 +1,6 @@
 // Route tests with the database, Supabase Auth and AI providers mocked.
 jest.mock('../repositories/extensions.repo');
+jest.mock('../repositories/messages.repo');
 jest.mock('../services/supabase', () => {
   const getUser = jest.fn();
   return { getSupabase: () => ({ auth: { getUser } }), __getUser: getUser };

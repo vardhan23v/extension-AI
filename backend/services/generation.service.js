@@ -3,6 +3,7 @@ const { parseExtensionResponse } = require('./ai/parse');
 const { sanitizeFiles } = require('../utils/sanitize');
 const { injectMissingIcons } = require('./icons.service');
 const { validateExtension } = require('./validator.service');
+const { repairManifest } = require('../utils/manifest');
 
 class GenerationError extends Error {
   constructor(message, { status = 422, details } = {}) {
@@ -63,17 +64,22 @@ const filesAsContext = (files) =>
 
 // parse → sanitize → add icons → validate. Throws on any failure so the
 // provider layer can fall through, except validation which returns results.
-const processResponse = (text, seed) => {
+const processResponse = (text, seed, keepFiles = []) => {
   const parsed = parseExtensionResponse(text);
-  const files = injectMissingIcons(sanitizeFiles(parsed.files), seed || parsed.title);
+  const generated = repairManifest(sanitizeFiles(parsed.files));
+  // Binary files (icons, images) are never sent to the model, so carry the
+  // project's existing ones over instead of regenerating them.
+  const names = new Set(generated.map((f) => f.filename));
+  const kept = keepFiles.filter((f) => !names.has(f.filename));
+  const files = injectMissingIcons([...generated, ...kept], seed || parsed.title);
   const validation = validateExtension(files);
   return { ...parsed, files, validation };
 };
 
-const runWithRepair = async ({ system, user, seed }) => {
+const runWithRepair = async ({ system, user, seed, keepFiles }) => {
   let first;
   try {
-    first = await completeWithFallback({ system, user, json: true }, (t) => processResponse(t, seed));
+    first = await completeWithFallback({ system, user, json: true }, (t) => processResponse(t, seed, keepFiles));
   } catch (e) {
     throw new GenerationError(e.message, { status: 502 });
   }
@@ -87,7 +93,7 @@ const runWithRepair = async ({ system, user, seed }) => {
       '\n- '
     )}\n\nPrevious files:\n${filesAsContext(out.files)}\n\nReturn the complete corrected file set in the same JSON format.`;
     try {
-      const second = await completeWithFallback({ system, user: repairUser, json: true }, (t) => processResponse(t, seed));
+      const second = await completeWithFallback({ system, user: repairUser, json: true }, (t) => processResponse(t, seed, keepFiles));
       if (second.result.validation.errors.length < out.validation.errors.length) {
         out = second.result;
         provider = second.provider;
@@ -113,7 +119,13 @@ const generateExtension = (prompt, options = {}) =>
   });
 
 // Edits an existing project: the current files are sent so unrelated code is preserved.
-const editExtension = (extension, instruction, { kind = 'edit' } = {}) => {
+const historyBlock = (history = []) => {
+  const recent = history.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-8);
+  if (!recent.length) return '';
+  return `Recent conversation (for context):\n${recent.map((m) => `${m.role}: ${String(m.content).slice(0, 500)}`).join('\n')}`;
+};
+
+const editExtension = (extension, instruction, { kind = 'edit', history = [] } = {}) => {
   const task =
     kind === 'debug'
       ? `The extension below throws this error:\n${instruction}\n\nFix the cause. Change only what is needed.`
@@ -122,6 +134,7 @@ const editExtension = (extension, instruction, { kind = 'edit' } = {}) => {
     system: buildSystemPrompt({ monetizationLink: extension.monetization_link }),
     user: [
       `Original request: ${extension.prompt}`,
+      historyBlock(history),
       task,
       userOptionsBlock({ monetizationLink: extension.monetization_link }),
       `Return the COMPLETE updated file set (all files, including unchanged ones).`,
@@ -130,6 +143,7 @@ const editExtension = (extension, instruction, { kind = 'edit' } = {}) => {
       .filter(Boolean)
       .join('\n\n'),
     seed: extension.title,
+    keepFiles: (extension.files || []).filter((f) => f.encoding === 'base64'),
   });
 };
 

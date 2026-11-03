@@ -1,6 +1,6 @@
 # Extensio AI 2.0 — Upgrade Plan
 
-_Status as of 2026-11-03. Phase 1 is in progress on branch `phase1-stabilize-supabase`. Nothing below is "done" unless marked **verified** in the Phase 1 report at the end._
+_Status as of 2026-11-03. Phase 1 is live. Phase 2 (workspace + redesign) is implemented; see section 10 for what is verified._
 
 ## 1. Existing architecture (audited)
 
@@ -120,3 +120,11 @@ Each phase is planned, implemented, and verified separately.
 - The UI in a browser.
 
 **Known limitations:** manual edits in the Code tab are still client-only and not saved (Phase 2); the existing version timeline UI still restores by re-prompting rather than using the new restore endpoint (Phase 2); the preview's mocked `chrome.storage` uses `localStorage`, which throws inside the sandboxed iframe; old Mongo ObjectId share links will not resolve; rate limits are in-memory per serverless instance.
+
+## 10. Phase 2 report (workspace + UI redesign)
+
+**Backend:** migration `20261104000000_phase2.sql` (project `status`, `description`, `last_audit`; `conversations` table with RLS). New owner-scoped routes: `PATCH /:id`, `PUT /:id/files` (manual edits; sanitized, icons kept, validated, snapshot at most every 10 min), `POST /:id/validate`, `POST /:id/apply` (re-validates an AI proposal), `POST /:id/duplicate`, `GET /:id/messages`; `iterate`/`debug` accept `preview: true` and return a proposal + per-file change summary without saving; conversation history is fed back to the AI; `GET /my` supports `q`, `status`, `limit`, `offset`; audits are stored on the project. AI edits keep existing icon files instead of regenerating them.
+
+**Frontend:** new design system (CSS-variable tokens, light/dark, Inter/JetBrains Mono, accessible primitives: Button, Field, Dialog with focus trap, Menu with arrow keys, Tabs, Badge, Skeleton, Empty/Error states); app shell with sidebar (mobile drawer); pages: Landing (no fabricated stats), Sign in/up, Dashboard, AI Builder, My Projects, Code Studio workspace (Monaco bundled locally, file tree with create/rename/delete, search across files, autosave with retry, Ctrl/Cmd+S, format, diff review of AI proposals, preview with in-memory `chrome.storage`, problems, history restore, security), Security Center, Settings, Templates, Community, shared view, 404, error boundary; route-level code splitting. Removed legacy `extensio-ai/`, `add_commits.sh`, `.activity_log`, committed `frontend/dist`, Mongo models/script and unused dependencies.
+
+**Not in this phase:** Testing Lab (Phase 3) and Publishing (Phase 5) are shown as disabled "Soon" items.
