@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, Loader2, MoreHorizontal,
-  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy,
+  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useProject } from '../features/workspace/useProject';
@@ -12,7 +12,7 @@ import { FileExplorer } from '../features/workspace/FileExplorer';
 import { EditorPanel, EditorTabs, DiffPanel } from '../features/workspace/EditorPanel';
 import { AssistantPanel } from '../features/workspace/AssistantPanel';
 import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../features/workspace/SidePanels';
-import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs, cx } from '../components/ui';
+import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
   if (state === 'saving') return <span className="flex items-center gap-1 text-[12px] text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />Saving…</span>;
@@ -281,16 +281,13 @@ const WorkspacePage = () => {
         <Link to="/projects" aria-label="Back to projects" className="flex h-8 w-8 items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <h1 className="min-w-0 truncate text-sm font-semibold">{p.project.title}</h1>
+        <h1 className="min-w-0 truncate font-display text-[15px] font-semibold tracking-display">{p.project.title}</h1>
         <Select aria-label="Project status" className="hidden md:block h-7 w-auto text-[12px]" value={p.project.status} onChange={(e) => setStatus(e.target.value)}>
           <option value="draft">Draft</option>
           <option value="ready">Ready</option>
           <option value="archived">Archived</option>
         </Select>
         <div className="ml-auto flex items-center gap-2">
-          <div className="hidden sm:block" aria-live="polite">
-            <SaveIndicator state={p.saveState} error={p.saveError} onRetry={() => p.save().catch(() => {})} />
-          </div>
           <Button size="sm" variant="primary" onClick={download}>
             <Download className="h-3.5 w-3.5" aria-hidden="true" /> <span className="hidden sm:inline">Download ZIP</span>
           </Button>
@@ -308,9 +305,9 @@ const WorkspacePage = () => {
 
       {/* Desktop: three panels */}
       <div className="hidden min-h-0 flex-1 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_380px] xl:grid-cols-[240px_minmax(0,1fr)_420px]">
-        <aside className="min-h-0 border-r border-border bg-surface">{explorer}</aside>
+        <aside className="min-h-0 border-r border-rule bg-bg">{explorer}</aside>
         <section aria-label="Editor" className="min-h-0">{editorArea}</section>
-        <aside aria-label="Tools" className="flex min-h-0 flex-col border-l border-border bg-surface">
+        <aside aria-label="Tools" className="flex min-h-0 flex-col border-l border-rule bg-bg">
           <div className="flex h-10 shrink-0 items-center border-b border-border px-1.5">
             <Tabs size="sm" label="Tools" value={side} onChange={setSide} tabs={SIDE_TABS} />
           </div>
@@ -329,13 +326,23 @@ const WorkspacePage = () => {
             tabs={[{ id: 'files', label: 'Files', icon: FolderTree }, { id: 'code', label: 'Code', icon: FileCode2 }, ...SIDE_TABS]}
           />
         </div>
-        <div className={cx('min-h-0 flex-1', mobile === 'files' && 'bg-surface')}>
+        <div className="min-h-0 flex-1">
           {mobile === 'files' ? explorer : mobile === 'code' ? editorArea : sidePanel(mobile)}
         </div>
-        <div className="shrink-0 border-t border-border px-3 py-1.5 sm:hidden" aria-live="polite">
-          <SaveIndicator state={p.saveState} error={p.saveError} onRetry={() => p.save().catch(() => {})} />
-        </div>
       </div>
+
+      {/* Status line */}
+      <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-rule bg-bg px-3 font-mono text-[11.5px] text-muted tabular" aria-label="Project status">
+        <span className={`inline-flex items-center gap-1 ${errorsCount ? 'text-danger' : 'text-success'}`}>
+          {errorsCount ? <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+          {errorsCount ? `MV3 · ${errorsCount} problem${errorsCount > 1 ? 's' : ''}` : 'MV3 valid'}
+        </span>
+        <span className="hidden sm:inline">{p.files.length} files</span>
+        {p.validation.warnings.length > 0 && <span className="hidden text-warning sm:inline">{p.validation.warnings.length} warnings</span>}
+        <span className="ml-auto font-sans" aria-live="polite">
+          <SaveIndicator state={p.saveState} error={p.saveError} onRetry={() => p.save().catch(() => {})} />
+        </span>
+      </footer>
     </div>
   );
 };

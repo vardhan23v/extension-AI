@@ -53,7 +53,7 @@ export const Menu = ({ trigger, items, align = 'end', label }) => {
           role="menu"
           onKeyDown={onKeyDown}
           className={cx(
-            'absolute z-40 mt-1 min-w-[180px] rounded-lg border border-border bg-bg p-1 shadow-lg animate-in',
+            'absolute z-40 mt-1 min-w-[180px] rounded-lg border border-rule bg-surface p-1 shadow-lg animate-in',
             align === 'end' ? 'right-0' : 'left-0'
           )}
         >

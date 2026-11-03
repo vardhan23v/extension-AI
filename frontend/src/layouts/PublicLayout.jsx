@@ -14,7 +14,7 @@ const PublicLayout = () => {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-bg focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-rule bg-bg">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-6">
             <Logo />

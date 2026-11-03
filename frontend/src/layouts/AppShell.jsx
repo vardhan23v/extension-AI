@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { IconButton, Menu, Badge, cx } from '../components/ui';
+import { IconButton, Menu, cx } from '../components/ui';
 import { lastProjectId } from '../features/workspace/recent';
 
 const NAV = [
@@ -31,13 +31,13 @@ const NavItems = ({ onNavigate }) => {
         <li key={item.label}>
           {item.soon ? (
             <span
-              className="flex h-8 items-center gap-2.5 rounded px-2.5 text-[13px] text-subtle cursor-not-allowed"
+              className="flex h-8 cursor-not-allowed items-center gap-2.5 px-2.5 text-[13px] text-subtle"
               aria-disabled="true"
               title={`Planned for ${item.soon}`}
             >
-              <item.icon className="h-4 w-4" aria-hidden="true" />
+              <item.icon className="h-4 w-4 opacity-70" aria-hidden="true" />
               {item.label}
-              <Badge className="ml-auto">Soon</Badge>
+              <span className="ml-auto text-[11px]">later</span>
             </span>
           ) : (
             <NavLink
@@ -47,7 +47,7 @@ const NavItems = ({ onNavigate }) => {
                 cx(
                   'flex h-8 items-center gap-2.5 rounded px-2.5 text-[13px] transition-colors duration-fast',
                   isActive || (item.to === '/studio' && studioActive)
-                    ? 'bg-surface-2 text-fg font-medium'
+                    ? 'bg-surface text-fg font-medium shadow-sm ring-1 ring-rule'
                     : 'text-muted hover:bg-surface-2/70 hover:text-fg'
                 )
               }
@@ -70,7 +70,7 @@ const UserMenu = () => {
     <Menu
       label="Account menu"
       trigger={
-        <button type="button" className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-[13px] font-semibold text-primary">
+        <button type="button" className="flex h-8 w-8 items-center justify-center rounded-full border border-control/60 bg-surface font-display text-[13px] font-semibold text-fg hover:border-control">
           {initial}
         </button>
       }
@@ -116,7 +116,7 @@ const AppShell = () => {
         <NavLink
           to="/settings"
           className={({ isActive }) =>
-            cx('flex h-8 items-center gap-2.5 rounded px-2.5 text-[13px]', isActive ? 'bg-surface-2 text-fg font-medium' : 'text-muted hover:bg-surface-2/70 hover:text-fg')
+            cx('flex h-8 items-center gap-2.5 rounded px-2.5 text-[13px]', isActive ? 'bg-surface text-fg font-medium shadow-sm ring-1 ring-rule' : 'text-muted hover:bg-surface-2/70 hover:text-fg')
           }
         >
           <Settings className="h-4 w-4" aria-hidden="true" />
@@ -131,12 +131,12 @@ const AppShell = () => {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-bg focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-border bg-surface">{sidebar}</aside>
+      <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-rule bg-surface-2/50 dark:bg-[rgb(17_16_13)]">{sidebar}</aside>
 
       {drawer && (
         <div className="lg:hidden fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Navigation">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawer(false)} aria-hidden="true" />
-          <aside className="relative flex h-full w-64 flex-col border-r border-border bg-surface animate-in">
+          <aside className="relative flex h-full w-64 flex-col border-r border-rule bg-bg animate-in">
             <IconButton label="Close navigation" autoFocus className="absolute right-2 top-3" onClick={() => setDrawer(false)}>
               <X className="h-4 w-4" />
             </IconButton>

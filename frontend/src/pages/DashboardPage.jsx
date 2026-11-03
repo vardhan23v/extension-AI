@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, FolderKanban, ShieldCheck, Sparkles, LayoutTemplate } from 'lucide-react';
+import { ArrowRight, FolderKanban, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -23,7 +23,7 @@ const DashboardPage = () => {
 
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Welcome{user?.name ? `, ${user.name}` : ''}</h1>
+      <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-display">Welcome{user?.name ? `, ${user.name}` : ''}</h1>
       <p className="mt-1 text-sm text-muted">Pick up where you left off, or start something new.</p>
 
       <Card className="mt-6 p-4">
@@ -71,17 +71,23 @@ const DashboardPage = () => {
         </Card>
       </section>
 
-      <section className="mt-8 grid gap-3 sm:grid-cols-2" aria-label="Shortcuts">
-        <Link to="/templates" className="group rounded-lg border border-border p-4 hover:bg-surface transition-colors duration-fast">
-          <LayoutTemplate className="h-5 w-5 text-muted" aria-hidden="true" />
-          <h3 className="mt-3 text-sm font-semibold">Start from a template</h3>
-          <p className="mt-1 text-[13px] text-muted">20 ready-made prompts for common extension types.</p>
-        </Link>
-        <Link to="/security" className="group rounded-lg border border-border p-4 hover:bg-surface transition-colors duration-fast">
-          <ShieldCheck className="h-5 w-5 text-muted" aria-hidden="true" />
-          <h3 className="mt-3 text-sm font-semibold">Security Center</h3>
-          <p className="mt-1 text-[13px] text-muted">Audit status across all your projects.</p>
-        </Link>
+      <section className="mt-10" aria-label="Shortcuts">
+        <ul className="divide-y divide-rule border-y border-rule">
+          {[
+            ['/templates', 'Start from a template', '20 ready-made prompts for common extension types'],
+            ['/security', 'Security Center', 'Audit status across all your projects'],
+          ].map(([to, title, body]) => (
+            <li key={to}>
+              <Link to={to} className="group flex items-center justify-between gap-4 py-3.5 hover:text-primary">
+                <span>
+                  <span className="block text-sm font-medium">{title}</span>
+                  <span className="block text-[13px] text-muted">{body}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-subtle transition-transform duration-fast group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden="true" />
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
       {dialogs}
     </>

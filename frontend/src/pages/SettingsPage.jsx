@@ -4,14 +4,16 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { userApi, errorMessage } from '../lib/api';
-import { Button, Card, Field, Input, PageHeader, Tabs } from '../components/ui';
+import { Button, Field, Input, PageHeader, Tabs } from '../components/ui';
 
 const Section = ({ title, description, children }) => (
-  <Card className="p-5">
-    <h2 className="text-sm font-semibold">{title}</h2>
-    {description && <p className="mt-1 text-[13px] text-muted">{description}</p>}
-    <div className="mt-4">{children}</div>
-  </Card>
+  <section className="grid gap-4 border-b border-rule py-7 md:grid-cols-[220px_1fr]">
+    <div>
+      <h2 className="text-sm font-semibold">{title}</h2>
+      {description && <p className="mt-1 text-[13px] text-muted">{description}</p>}
+    </div>
+    <div>{children}</div>
+  </section>
 );
 
 const SettingsPage = () => {
@@ -44,7 +46,7 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl">
       <PageHeader title="Settings" />
       <Section title="Profile">
         <form onSubmit={save} className="space-y-4">

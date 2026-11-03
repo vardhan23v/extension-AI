@@ -2,8 +2,8 @@ import React, { forwardRef, useId } from 'react';
 import { cx } from './cx';
 
 const control =
-  'w-full rounded border border-border bg-bg text-fg placeholder:text-subtle transition-colors duration-fast ' +
-  'hover:border-border-strong focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ' +
+  'w-full rounded border border-control/70 bg-surface text-fg placeholder:text-subtle transition-colors duration-fast ' +
+  'hover:border-control focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ' +
   'disabled:opacity-60 aria-[invalid=true]:border-danger';
 
 export const Input = forwardRef(function Input({ className, ...props }, ref) {
@@ -62,7 +62,7 @@ export const Switch = ({ checked, onChange, label, id }) => (
     onClick={() => onChange(!checked)}
     className={cx(
       'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-transparent transition-colors duration-fast',
-      checked ? 'bg-primary' : 'bg-border-strong'
+      checked ? 'bg-primary' : 'bg-control'
     )}
   >
     <span

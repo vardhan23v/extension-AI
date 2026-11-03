@@ -9,7 +9,7 @@ import { IconButton, Spinner, cx } from '../../components/ui';
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', ico: 'image/x-icon' };
 
 const OPTIONS = {
-  fontFamily: '"JetBrains Mono", ui-monospace, Menlo, monospace',
+  fontFamily: '"JetBrains Mono Variable", ui-monospace, Menlo, monospace',
   fontSize: 13,
   lineHeight: 20,
   minimap: { enabled: false },
@@ -34,7 +34,7 @@ const BinaryView = ({ file }) => {
 };
 
 export const EditorTabs = ({ tabs, active, onSelect, onClose, dirtyNames }) => (
-  <div role="tablist" aria-label="Open files" className="flex h-10 shrink-0 items-end overflow-x-auto border-b border-border bg-surface">
+  <div role="tablist" aria-label="Open files" className="flex h-10 shrink-0 items-end overflow-x-auto border-b border-rule bg-bg">
     {tabs.map((name) => {
       const isActive = name === active;
       return (
@@ -42,7 +42,7 @@ export const EditorTabs = ({ tabs, active, onSelect, onClose, dirtyNames }) => (
           key={name}
           className={cx(
             'group flex h-full items-center border-r border-border text-[13px]',
-            isActive ? 'bg-bg text-fg' : 'text-muted hover:text-fg'
+            isActive ? 'bg-surface text-fg shadow-[inset_0_2px_0_rgb(var(--primary))]' : 'text-muted hover:text-fg'
           )}
         >
           <button role="tab" type="button" aria-selected={isActive} onClick={() => onSelect(name)} className="h-full pl-3 pr-1 font-mono text-[12px]">
@@ -84,7 +84,7 @@ export const EditorPanel = ({ file, onChange, onSave, revealLine, readOnly = fal
         defaultLanguage={languageFor(file.filename)}
         language={languageFor(file.filename)}
         value={file.content}
-        theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+        theme={theme === 'dark' ? 'workbench-dark' : 'workbench-light'}
         options={{ ...OPTIONS, readOnly }}
         loading={<Spinner label="Loading editor" />}
         onChange={(v) => onChange(file.filename, v ?? '')}
@@ -117,7 +117,7 @@ export const DiffPanel = ({ filename, original, modified }) => {
       language={languageFor(filename)}
       originalModelPath={`original/${filename}`}
       modifiedModelPath={`proposed/${filename}`}
-      theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+      theme={theme === 'dark' ? 'workbench-dark' : 'workbench-light'}
       options={{ ...OPTIONS, readOnly: true, renderSideBySide: window.innerWidth > 900 }}
       loading={<Spinner label="Loading diff" />}
     />

@@ -4,22 +4,29 @@ import { Button } from './Button';
 import { cx } from './cx';
 
 const TONES = {
-  neutral: 'bg-surface-2 text-muted border-border',
-  primary: 'bg-primary-soft text-primary border-primary/20',
-  success: 'bg-success/10 text-success border-success/20',
-  warning: 'bg-warning/10 text-warning border-warning/25',
-  danger: 'bg-danger/10 text-danger border-danger/20',
-  info: 'bg-info/10 text-info border-info/20',
+  neutral: 'text-muted before:bg-subtle',
+  primary: 'text-primary before:bg-primary',
+  success: 'text-success before:bg-success',
+  warning: 'text-warning before:bg-warning',
+  danger: 'text-danger before:bg-danger',
+  info: 'text-info before:bg-info',
 };
 
+// Status label: small text with a leading dot (no filled pills — see DESIGN.md).
 export const Badge = ({ tone = 'neutral', className, children }) => (
-  <span className={cx('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', TONES[tone], className)}>
+  <span
+    className={cx(
+      "inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium before:h-1.5 before:w-1.5 before:shrink-0 before:rounded-full before:content-['']",
+      TONES[tone],
+      className
+    )}
+  >
     {children}
   </span>
 );
 
 export const Card = ({ className, children, as: Tag = 'div', ...props }) => (
-  <Tag className={cx('rounded-lg border border-border bg-bg', className)} {...props}>
+  <Tag className={cx('rounded-lg border border-rule bg-surface', className)} {...props}>
     {children}
   </Tag>
 );
@@ -34,14 +41,12 @@ export const Spinner = ({ label = 'Loading', className }) => (
 );
 
 export const EmptyState = ({ icon: Icon, title, description, action, className }) => (
-  <div className={cx('flex flex-col items-center justify-center text-center px-6 py-14', className)}>
-    {Icon && (
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-muted">
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </div>
-    )}
-    <h3 className="text-sm font-semibold">{title}</h3>
-    {description && <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>}
+  <div className={cx('px-6 py-12 text-center', className)}>
+    <h3 className="inline-flex items-center gap-2 text-sm font-semibold">
+      {Icon && <Icon className="h-4 w-4 text-subtle" aria-hidden="true" />}
+      {title}
+    </h3>
+    {description && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{description}</p>}
     {action && <div className="mt-5">{action}</div>}
   </div>
 );
@@ -60,7 +65,7 @@ export const ErrorState = ({ title = 'Something went wrong', message, onRetry })
 );
 
 export const Kbd = ({ children }) => (
-  <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] text-muted">{children}</kbd>
+  <kbd className="rounded border border-rule bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-muted">{children}</kbd>
 );
 
 // Accessible tabs (roving focus with arrow keys). tabs: [{ id, label, icon, badge }]
@@ -78,7 +83,7 @@ export const Tabs = ({ tabs, value, onChange, className, label, size = 'md' }) =
     e.currentTarget.querySelector(`[data-tab="${next.id}"]`)?.focus();
   };
   return (
-    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cx('flex items-center gap-1 overflow-x-auto', className)}>
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cx('flex items-center gap-0.5 overflow-x-auto', className)}>
       {tabs.map((t) => {
         const active = t.id === value;
         return (
@@ -91,9 +96,10 @@ export const Tabs = ({ tabs, value, onChange, className, label, size = 'md' }) =
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(t.id)}
             className={cx(
-              'inline-flex shrink-0 items-center gap-1.5 rounded font-medium transition-colors duration-fast',
-              size === 'sm' ? 'h-7 px-2 text-[12px]' : 'h-8 px-2.5 text-[13px]',
-              active ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg hover:bg-surface-2/60'
+              'relative inline-flex shrink-0 items-center gap-1.5 font-medium transition-colors duration-fast',
+              "after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:content-['']",
+              size === 'sm' ? 'h-9 px-2 text-[12px]' : 'h-10 px-2.5 text-[13px]',
+              active ? 'text-fg after:bg-primary' : 'text-muted hover:text-fg after:bg-transparent'
             )}
           >
             {t.icon && <t.icon className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -107,9 +113,9 @@ export const Tabs = ({ tabs, value, onChange, className, label, size = 'md' }) =
 };
 
 export const PageHeader = ({ title, description, actions }) => (
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6">
+  <div className="mb-8 flex flex-col gap-4 border-b border-rule pb-6 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-display">{title}</h1>
       {description && <p className="mt-1 text-sm text-muted">{description}</p>}
     </div>
     {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

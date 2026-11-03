@@ -38,20 +38,19 @@ const TemplatesPage = () => {
       {results.length === 0 ? (
         <EmptyState icon={LayoutTemplate} title="No templates match" description="Try another search or category." />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid border-t border-rule md:grid-cols-2 md:gap-x-10">
           {results.map((t) => (
-            <li key={t.title} className="flex flex-col rounded-lg border border-border p-4 transition-colors duration-fast hover:bg-surface">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted">
-                  <t.icon className="h-4 w-4" aria-hidden="true" />
+            <li key={t.title} className="flex flex-col gap-3 border-b border-rule py-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h2 className="text-[15px] font-semibold">{t.title}</h2>
+                  <Badge tone={LEVEL_TONE[t.complexity] || 'neutral'}>{t.complexity}</Badge>
                 </div>
-                <Badge tone={LEVEL_TONE[t.complexity] || 'neutral'}>{t.complexity}</Badge>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted">{t.description}</p>
               </div>
-              <h2 className="mt-3 text-sm font-semibold">{t.title}</h2>
-              <p className="mt-1 flex-1 text-[13px] leading-relaxed text-muted">{t.description}</p>
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="primary" onClick={() => use(t)}>Use template</Button>
-                <Button size="sm" variant="ghost" onClick={() => setSelected(t)}>View prompt</Button>
+              <div className="flex shrink-0 gap-1.5">
+                <Button size="sm" variant="ghost" onClick={() => setSelected(t)}>Prompt</Button>
+                <Button size="sm" onClick={() => use(t)}>Use</Button>
               </div>
             </li>
           ))}

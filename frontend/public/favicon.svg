@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <style>.bg{fill:#4f46e5}.fg{fill:#fff}@media (prefers-color-scheme:dark){.bg{fill:#818cf8}.fg{fill:#0b0b10}}</style>
-  <rect class="bg" width="32" height="32" rx="8"/>
-  <path class="fg" d="M10 9h12v3.5h-8v2h7v3.5h-7v2h8V23H10z"/>
+  <style>.bg{fill:#1C1A16}.cut{fill:#F5F3EE}.dot{fill:#C2410C}@media (prefers-color-scheme:dark){.bg{fill:#ECE9E1}.cut{fill:#141310}.dot{fill:#FF7A45}}</style>
+  <rect class="bg" width="32" height="32" rx="7"/>
+  <path class="cut" d="M9 8h13v3.6h-9v2.6h8v3.6h-8v2.6h9V24H9z"/>
+  <circle class="dot" cx="24.5" cy="22.5" r="2.5"/>
 </svg>

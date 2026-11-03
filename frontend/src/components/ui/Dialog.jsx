@@ -57,11 +57,11 @@ export const Dialog = ({ open, onClose, title, description, children, footer, si
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className={`relative w-full ${width} max-h-[90vh] flex flex-col rounded-t-xl sm:rounded-xl border border-border bg-bg shadow-xl animate-in`}
+        className={`relative w-full ${width} max-h-[90vh] flex flex-col rounded-t-lg sm:rounded-lg border border-rule bg-surface shadow-lg animate-in`}
       >
         <div className="flex items-start justify-between gap-4 px-5 pt-5">
           <div>
-            <h2 id={titleId} className="text-base font-semibold">
+            <h2 id={titleId} className="font-display text-lg font-semibold tracking-display">
               {title}
             </h2>
             {description && (

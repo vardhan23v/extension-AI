@@ -34,19 +34,20 @@ const SecurityCenterPage = () => {
     <>
       <PageHeader title="Security Center" description="Automated checks for permissions, remote code, unsafe DOM use, CSP issues and exposed keys. Not a certification." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="mb-6 flex flex-wrap gap-x-8 gap-y-2 text-sm" aria-label="Audit summary">
         {[
-          ['passed', 'Passed checks'],
-          ['findings', 'With findings'],
-          ['incomplete', 'Incomplete'],
-          ['none', 'Never audited'],
+          ['passed', 'passed checks'],
+          ['findings', 'with findings'],
+          ['incomplete', 'incomplete'],
+          ['none', 'never audited'],
         ].map(([k, label]) => (
-          <Card key={k} className="p-4">
-            <p className="text-[12px] text-muted">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{loading && !data ? '–' : counts[k] || 0}</p>
-          </Card>
+          <div key={k} className="flex items-baseline gap-1.5">
+            <dt className="sr-only">{label}</dt>
+            <dd className="font-display text-xl font-semibold tabular">{loading && !data ? '–' : counts[k] || 0}</dd>
+            <span className="text-muted" aria-hidden="true">{label}</span>
+          </div>
         ))}
-      </div>
+      </dl>
 
       {runError && (
         <div role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
