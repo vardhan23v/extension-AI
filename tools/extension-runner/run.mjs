@@ -73,6 +73,7 @@ const run = async () => {
     'Behaviour that needs real websites or signed-in accounts',
     'Network calls to external servers (blocked during the test)',
     'Keyboard shortcuts, context-menu clicks and notifications',
+    'Popup actions on the current page that need a toolbar click (activeTab) — the popup is opened as a tab here',
   ];
   const add = (id, title, status, detail = '') => checks.push({ id, title, status, detail });
 
@@ -130,6 +131,10 @@ const run = async () => {
         errors.forEach((message) => consoleErrors.push({ source: file, message }));
         if (errors.length) add(id, title, 'fail', `${errors.length} error(s): ${errors[0].slice(0, 200)}`);
         else if (!text) add(id, title, 'warn', 'Opened without errors but shows no text.');
+        else if (/\b(error|cannot|failed|unable)\b/i.test(text)) {
+          const line = text.split('\n').find((l) => /\b(error|cannot|failed|unable)\b/i.test(l)) || text;
+          add(id, title, 'warn', `No console errors, but the page shows: “${line.slice(0, 160)}”. If it depends on the active tab, it may work when opened from the toolbar.`);
+        }
         else add(id, title, 'pass', 'Opened without console errors.');
       } catch (e) {
         add(id, title, 'fail', `Could not open ${file}: ${e.message.split('\n')[0]}`);
