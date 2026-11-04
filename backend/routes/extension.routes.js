@@ -27,6 +27,7 @@ router.post('/:id/duplicate', id, authMiddleware, c.duplicateExtension);
 router.get('/:id/messages', id, authMiddleware, c.getMessages);
 const lab = require('../controllers/testLab.controller');
 router.post('/:id/test', id, authMiddleware, lab.startRun);
+router.post('/:id/github', id, authMiddleware, aiContext, require('../controllers/github.controller').exportProject);
 router.get('/:id/test-runs', id, authMiddleware, lab.listForExtension);
 router.get('/:id/publishing', id, authMiddleware, c.getPublishing);
 router.post('/:id/publishing/kit', id, authMiddleware, aiContext, aiLimiter, c.draftStoreKit);

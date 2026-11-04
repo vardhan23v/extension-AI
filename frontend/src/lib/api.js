@@ -105,6 +105,14 @@ export const createWithProgress = async (body, onEvent, { signal } = {}) => {
   throw Object.assign(new Error('The connection closed before the extension was ready. Please try again.'), { response: { status: 502, data: {} } });
 };
 
+export const githubApi = {
+  status: () => data(api.get('/github')),
+  connect: (privateRepos) => data(api.post('/github/connect', { private: privateRepos })),
+  disconnect: () => data(api.delete('/github')),
+  repos: () => data(api.get('/github/repos')),
+  exportProject: (id, target) => data(api.post(`/extensions/${id}/github`, { target }, { timeout: 120000 })),
+};
+
 export const galleryApi = {
   list: () => data(api.get('/extensions/gallery')),
   shared: (id) => data(api.get(`/extensions/shared/${id}`)),

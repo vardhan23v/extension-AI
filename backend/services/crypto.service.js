@@ -35,4 +35,7 @@ const decrypt = (payload) => {
   return Buffer.concat([decipher.update(Buffer.from(data, 'base64url')), decipher.final()]).toString('utf8');
 };
 
-module.exports = { encrypt, decrypt, isConfigured };
+// Signs short-lived values (e.g. OAuth state) with a key derived from the encryption key.
+const hmac = (value) => crypto.createHmac('sha256', crypto.createHash('sha256').update(Buffer.concat([requireKey(), Buffer.from('hmac')])).digest()).update(value).digest('base64url');
+
+module.exports = { encrypt, decrypt, isConfigured, hmac };

@@ -10,7 +10,7 @@
 [![Deploy with Vercel](https://img.shields.io/badge/Deploy_with-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
 
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
-[![Tests](https://img.shields.io/badge/Backend_tests-151_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
+[![Tests](https://img.shields.io/badge/Backend_tests-165_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
 [![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
@@ -66,6 +66,7 @@ Generated code is treated as untrusted from start to finish. It is parsed, valid
 | **Design tab** | Theme the popup with colour, font, radius, spacing and width controls (live WCAG contrast readout, light/dark variants), written as a marked block of CSS variables. Insert accessible components (buttons, input, toggle, card, list, status) as a reviewable diff. |
 | **Bring your own key** | Add your own Groq, Gemini or OpenRouter key: verified with the provider, AES-256-GCM encrypted, never returned to the browser. "Use only my keys" never falls back to platform keys. |
 | **Testing Lab** | Loads the extension in real headless Chromium (Playwright on GitHub Actions): service worker starts, popup/options/side panel open without console errors, content scripts run on a matching page, external requests are blocked and reported. Real screenshots; failures go to the crew as a reviewable fix (max 2 automatic attempts). |
+| **GitHub export** | Connect GitHub (OAuth, `public_repo` scope unless you opt into private repos; token encrypted) and export to a new repo or an existing one. Non-empty repos only get a **new branch**; history is never force-pushed. A README is generated if missing. |
 | **Community** | Share projects, upvote (once per user) and clone. |
 
 ## Architecture
@@ -245,6 +246,9 @@ Open http://localhost:5173 and create an account. If email confirmation is on in
 | `GITHUB_DISPATCH_TOKEN` | for Testing Lab | | Fine-grained token for this repo with **Contents: read & write** (used only to send `repository_dispatch`) |
 | `TEST_RUNNER_REPO` | for Testing Lab | | `owner/name` of the repo that hosts `.github/workflows/test-extension.yml` |
 | `TEST_RUNS_PER_HOUR` | | `10` | Test runs per user per hour |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | for GitHub export | | GitHub OAuth App credentials |
+| `GITHUB_OAUTH_REDIRECT_URI` | for GitHub export | | `https://<your-domain>/api/github/callback` (must match the OAuth App) |
+| `APP_URL` | | origin of the redirect URI | Where the OAuth callback sends the browser back to |
 
 ### Frontend (`frontend/.env.local`, public, baked in at build time)
 
@@ -260,7 +264,7 @@ Open http://localhost:5173 and create an account. If email confirmation is on in
 |---|---|---|
 | `npm run install:all` | root | Install backend and frontend dependencies |
 | `npm run dev:backend` / `dev:frontend` | root | Run the API (nodemon) / Vite dev server |
-| `npm test` | root or `backend/` | Jest suite (151 tests) |
+| `npm test` | root or `backend/` | Jest suite (165 tests) |
 | `npm run lint` | root or `frontend/` | ESLint |
 | `npm run build` | root or `frontend/` | Production build to `frontend/dist` |
 | `node backend/test-ai.js "<prompt>"` | | Live crew run against your real providers, printing each agent's timing (uses credits) |
@@ -322,6 +326,11 @@ All routes are under `/api`. Authenticated routes need `Authorization: Bearer <S
 | `POST` | `/extensions/:id/upvote` | ✓ | One vote per user (`409` on repeat) |
 | `POST` | `/extensions/:id/clone` | ✓ | Clone a public project |
 | `GET` / `PUT` | `/user/profile` | ✓ | Display name |
+| `GET` / `DELETE` | `/github` | ✓ | Connection status / disconnect (revokes the grant) |
+| `POST` | `/github/connect` | ✓ | `{ private }` → GitHub authorize URL with signed state |
+| `GET` | `/github/callback` | | OAuth redirect target (user identified by signed state) |
+| `GET` | `/github/repos` | ✓ | Your repositories |
+| `POST` | `/extensions/:id/github` | ✓ | Export: `{ target: { mode: 'new', name, private } }` or `{ target: { mode: 'existing', repo, branch } }` |
 | `GET` | `/user/keys` | ✓ | Providers, whether a key is saved (last 4 only) and the BYOK-only setting |
 | `PUT` / `DELETE` | `/user/keys/:provider` | ✓ | Verify + save, or remove, your key (`groq`, `gemini`, `openrouter`) |
 | `POST` | `/user/keys/:provider/test` | ✓ | Re-check a saved key with the provider |
@@ -360,6 +369,12 @@ Runs execute in GitHub Actions (`.github/workflows/test-extension.yml` → `tool
 
 Local check without GitHub: `cd tools/extension-runner && npm install && npx playwright install chromium && RUN_LOCAL_DIR=/path/to/unpacked node run.mjs`.
 
+## GitHub export setup
+
+1. GitHub → Settings → Developer settings → **OAuth Apps → New OAuth App**. Homepage URL: your app URL. Authorization callback URL: `https://<your-domain>/api/github/callback`.
+2. Generate a client secret. Set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `GITHUB_OAUTH_REDIRECT_URI` in Vercel (and `backend/.env` for local use). `BYOK_ENCRYPTION_KEY` must also be set; it encrypts the stored tokens.
+3. Users connect from **Settings → GitHub** and export from the **⋯** menu in Code Studio.
+
 ## Deployment
 
 The repo deploys to Vercel as-is (`vercel.json`):
@@ -375,7 +390,7 @@ Set the backend variables and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in 
 - The preview is visual only. Content scripts and service workers don't run there; load the ZIP in Chrome to test behaviour.
 - Security checks are automated pattern checks, not a review or Chrome Web Store approval.
 - On free AI tiers, rate limits (for example Groq's tokens-per-minute) can make back-to-back generations wait or fail; the API reports this clearly.
-- The Testing Lab checks loading, pages and content scripts on a local test page; behaviour on real websites, keyboard shortcuts and notifications still need manual testing. GitHub export is in progress. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
+- The Testing Lab checks loading, pages and content scripts on a local test page; behaviour on real websites, keyboard shortcuts and notifications still need manual testing. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
 
 ## Contributing
 

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, MoreHorizontal,
-  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket, Palette, FlaskConical,
+  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket, Palette, FlaskConical, Github,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useProject } from '../features/workspace/useProject';
@@ -16,6 +16,7 @@ import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../fea
 import { PublishPanel } from '../features/publishing/PublishPanel';
 import { DesignPanel } from '../features/design/DesignPanel';
 import { TestsPanel } from '../features/testing/TestsPanel';
+import { ExportDialog } from '../features/github/ExportDialog';
 import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
@@ -49,6 +50,7 @@ const WorkspacePage = () => {
   const [applying, setApplying] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => rememberProject(id), [id]);
@@ -353,6 +355,7 @@ const WorkspacePage = () => {
           </Button>
           <Menu
             items={[
+              { label: 'Export to GitHub', icon: Github, onSelect: () => setExporting(true) },
               { label: p.project.isPublic ? 'Unshare from community' : 'Share to community', icon: Globe, disabled: publishing, onSelect: togglePublish },
               ...(p.project.isPublic
                 ? [{ label: 'Copy share link', icon: Copy, onSelect: () => navigator.clipboard.writeText(`${window.location.origin}/shared/${id}`).then(() => toast.success('Link copied')) }]
@@ -393,6 +396,8 @@ const WorkspacePage = () => {
         </div>
       </div>
       )}
+
+      <ExportDialog open={exporting} onClose={() => setExporting(false)} project={p.project} beforeExport={flush} />
 
       {/* Status line */}
       <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-rule bg-bg px-3 font-mono text-[11.5px] text-muted tabular" aria-label="Project status">
