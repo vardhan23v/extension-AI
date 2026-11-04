@@ -15,7 +15,7 @@ const NAV = [
   { to: '/new', label: 'AI Builder', icon: Sparkles },
   { to: '/projects', label: 'My Projects', icon: FolderKanban },
   { to: '/studio', label: 'Code Studio', icon: Code2 },
-  { label: 'Testing Lab', icon: FlaskConical, soon: 'Phase 3' },
+  { to: '/testing', label: 'Testing Lab', icon: FlaskConical },
   { to: '/security', label: 'Security Center', icon: ShieldCheck },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/gallery', label: 'Community', icon: Users },

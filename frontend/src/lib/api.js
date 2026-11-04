@@ -44,6 +44,10 @@ export const projectsApi = {
     const res = await api.get(`/extensions/${id}/publishing/package`, { responseType: 'blob', timeout: 60000 });
     saveBlob(res.data, `${(title || 'extension').replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '-') || 'extension'}-store-package.zip`);
   },
+  startTest: (id) => data(api.post(`/extensions/${id}/test`)),
+  testRuns: (id) => data(api.get(`/extensions/${id}/test-runs`)),
+  testRun: (runId) => data(api.get(`/test-runs/${runId}`)),
+  allTestRuns: () => data(api.get('/test-runs')),
   enhancePrompt: (prompt) => data(api.post('/extensions/enhance-prompt', { prompt }, { timeout: 60000 })),
   download: async (id, title) => {
     const res = await api.get(`/extensions/download/${id}`, { responseType: 'blob', timeout: 60000 });

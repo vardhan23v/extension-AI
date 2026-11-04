@@ -1,0 +1,12 @@
+{
+  "name": "extensio-extension-runner",
+  "private": true,
+  "description": "Loads a generated extension in real Chromium (Playwright) and reports what works. Run by .github/workflows/test-extension.yml.",
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.60.0"
+  }
+}

@@ -10,7 +10,7 @@
 [![Deploy with Vercel](https://img.shields.io/badge/Deploy_with-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/new/clone?repository-url=https://github.com/vardhan23v/extension-AI)
 
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
-[![Tests](https://img.shields.io/badge/Backend_tests-139_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
+[![Tests](https://img.shields.io/badge/Backend_tests-151_passing-16A34A?style=for-the-badge&logo=jest&logoColor=white)](backend/tests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
 [![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
@@ -65,6 +65,7 @@ Generated code is treated as untrusted from start to finish. It is parsed, valid
 | **Publishing assistant** | Chrome Web Store readiness checklist computed from the code, AI-drafted listing (description, category, single purpose, per-permission justifications, privacy policy), promo tile, and a store package ZIP. You submit it yourself. |
 | **Design tab** | Theme the popup with colour, font, radius, spacing and width controls (live WCAG contrast readout, light/dark variants), written as a marked block of CSS variables. Insert accessible components (buttons, input, toggle, card, list, status) as a reviewable diff. |
 | **Bring your own key** | Add your own Groq, Gemini or OpenRouter key: verified with the provider, AES-256-GCM encrypted, never returned to the browser. "Use only my keys" never falls back to platform keys. |
+| **Testing Lab** | Loads the extension in real headless Chromium (Playwright on GitHub Actions): service worker starts, popup/options/side panel open without console errors, content scripts run on a matching page, external requests are blocked and reported. Real screenshots; failures go to the crew as a reviewable fix (max 2 automatic attempts). |
 | **Community** | Share projects, upvote (once per user) and clone. |
 
 ## Architecture
@@ -240,6 +241,10 @@ Open http://localhost:5173 and create an account. If email confirmation is on in
 | `CORS_ORIGINS` | prod | | Comma-separated allowed origins (localhost is allowed in development) |
 | `BYOK_ENCRYPTION_KEY` | for BYOK | | 32 random bytes, base64. Encrypts users' own AI keys. Use the same value everywhere that shares the database; changing it makes saved keys unreadable. |
 | `AI_RATE_LIMIT_BYOK` | | `200` | AI requests per 15 minutes for users on their own keys |
+| `TEST_RUNNER_SECRET` | for Testing Lab | | Shared HMAC secret between the API and the GitHub Actions runner |
+| `GITHUB_DISPATCH_TOKEN` | for Testing Lab | | Fine-grained token for this repo with **Contents: read & write** (used only to send `repository_dispatch`) |
+| `TEST_RUNNER_REPO` | for Testing Lab | | `owner/name` of the repo that hosts `.github/workflows/test-extension.yml` |
+| `TEST_RUNS_PER_HOUR` | | `10` | Test runs per user per hour |
 
 ### Frontend (`frontend/.env.local`, public, baked in at build time)
 
@@ -255,7 +260,7 @@ Open http://localhost:5173 and create an account. If email confirmation is on in
 |---|---|---|
 | `npm run install:all` | root | Install backend and frontend dependencies |
 | `npm run dev:backend` / `dev:frontend` | root | Run the API (nodemon) / Vite dev server |
-| `npm test` | root or `backend/` | Jest suite (139 tests) |
+| `npm test` | root or `backend/` | Jest suite (151 tests) |
 | `npm run lint` | root or `frontend/` | ESLint |
 | `npm run build` | root or `frontend/` | Production build to `frontend/dist` |
 | `node backend/test-ai.js "<prompt>"` | | Live crew run against your real providers, printing each agent's timing (uses credits) |
@@ -295,6 +300,9 @@ All routes are under `/api`. Authenticated routes need `Authorization: Bearer <S
 | `GET` | `/extensions/:id/versions` | ✓ | Snapshots |
 | `POST` | `/extensions/:id/versions/:versionId/restore` | ✓ | Restore a snapshot (the current state is snapshotted first) |
 | `POST` | `/extensions/:id/audit` | ✓ | Security audit (owner only; result stored on the project) |
+| `POST` | `/extensions/:id/test` | ✓ | Start a Testing Lab run (snapshot of the current files) → `202` |
+| `GET` | `/extensions/:id/test-runs` | ✓ | Recent runs for a project |
+| `GET` | `/test-runs` · `/test-runs/:runId` | ✓ | All your runs · one run with its report and screenshots |
 | `POST` | `/extensions/enhance-prompt` | ✓ | Expand a short idea into a detailed prompt |
 | `GET` | `/extensions/:id/publishing` | ✓ | Store readiness checklist + saved listing |
 | `POST` | `/extensions/:id/publishing/kit` | ✓ | Draft the listing with AI (saved, editable) |
@@ -341,6 +349,17 @@ npm test
 
 The suite covers the sanitizer (traversal, absolute paths, NUL, size limits), the MV3 validator, the PNG and ZIP round-trip, manifest repair, provider fallback and retry, audit status logic, every route (auth, ownership, invalid ids, malformed AI output, rate limits, CORS, body limits), the Phase 2 workflows (save, preview/apply, versions, messages) and the crew (plan hand-off, fallback, single-fix rules, time budget, SSE stream). AI providers, Supabase and auth are mocked, so the suite runs offline.
 
+## Testing Lab setup
+
+Runs execute in GitHub Actions (`.github/workflows/test-extension.yml` → `tools/extension-runner/run.mjs`). The API sends a `repository_dispatch` with only the run id. The runner fetches a frozen copy of the files and posts its report back, signing both requests with an HMAC of `TEST_RUNNER_SECRET`. No user credentials ever reach the runner.
+
+1. Generate a secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+2. Vercel (and `backend/.env`): `TEST_RUNNER_SECRET`, `TEST_RUNNER_REPO=owner/name`, `GITHUB_DISPATCH_TOKEN`. The token is a fine-grained token scoped to this repo with Contents: read & write.
+3. GitHub → repo → Settings → Secrets and variables → Actions: `TEST_RUNNER_SECRET` (same value) and `API_BASE_URL` (for example `https://your-app.vercel.app/api`).
+4. The workflow must be on the default branch for `repository_dispatch` to trigger it.
+
+Local check without GitHub: `cd tools/extension-runner && npm install && npx playwright install chromium && RUN_LOCAL_DIR=/path/to/unpacked node run.mjs`.
+
 ## Deployment
 
 The repo deploys to Vercel as-is (`vercel.json`):
@@ -356,7 +375,7 @@ Set the backend variables and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in 
 - The preview is visual only. Content scripts and service workers don't run there; load the ZIP in Chrome to test behaviour.
 - Security checks are automated pattern checks, not a review or Chrome Web Store approval.
 - On free AI tiers, rate limits (for example Groq's tokens-per-minute) can make back-to-back generations wait or fail; the API reports this clearly.
-- The Testing Lab (automated Chromium runs via GitHub Actions) and GitHub export are in progress. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
+- The Testing Lab checks loading, pages and content scripts on a local test page; behaviour on real websites, keyboard shortcuts and notifications still need manual testing. GitHub export is in progress. See the [roadmap](EXTENSIO_UPGRADE_PLAN.md).
 
 ## Contributing
 

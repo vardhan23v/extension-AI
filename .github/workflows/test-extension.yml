@@ -1,0 +1,48 @@
+name: Test extension
+
+# Triggered by the Extensio API (POST /api/extensions/:id/test) via repository_dispatch.
+on:
+  repository_dispatch:
+    types: [test-extension]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-extension-${{ github.event.client_payload.runId }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/extension-runner
+    steps:
+      - name: Validate run id
+        working-directory: .
+        env:
+          RUN_ID: ${{ github.event.client_payload.runId }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo "Invalid run id"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/extension-runner
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install runner
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run tests
+        env:
+          RUN_ID: ${{ github.event.client_payload.runId }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          TEST_RUNNER_SECRET: ${{ secrets.TEST_RUNNER_SECRET }}
+        run: node run.mjs

@@ -29,3 +29,11 @@ export const PROJECT_STATUS = {
   ready: { label: 'Ready', tone: 'success' },
   archived: { label: 'Archived', tone: 'neutral' },
 };
+
+export const RUN_STATUS = {
+  queued: { label: 'Queued', tone: 'neutral' },
+  running: { label: 'Running', tone: 'info' },
+  passed: { label: 'Passed', tone: 'success' },
+  failed: { label: 'Failed', tone: 'danger' },
+  error: { label: 'Could not run', tone: 'warning' },
+};

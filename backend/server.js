@@ -46,6 +46,7 @@ app.use('/api', apiLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/extensions', extensionRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/test-runs', require('./routes/testRuns.routes'));
 
 const health = async (req, res) => {
   let database = 'unconfigured';

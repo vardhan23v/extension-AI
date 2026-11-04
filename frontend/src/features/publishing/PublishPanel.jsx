@@ -207,7 +207,7 @@ export const PublishPanel = ({ project, files, beforeAction }) => {
             Download 128×128 icon
           </a>
         )}
-        <p className="text-[12px] text-muted">Screenshots: 1280×800 or 640×400. Capture the popup in Chrome, or use the Testing Lab once it is available.</p>
+        <p className="text-[12px] text-muted">Screenshots: 1280×800 or 640×400. The Tests tab captures a real Chromium render of your popup you can start from.</p>
       </section>
 
       <section className="space-y-2 border-t border-rule pt-4">

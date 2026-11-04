@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft, Bot, Check, CloudOff, Download, Eye, FileCode2, FolderTree, History, MoreHorizontal,
-  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket, Palette,
+  ShieldCheck, AlertTriangle, Globe, GitCompare, Copy, AlertCircle, CheckCircle2, Rocket, Palette, FlaskConical,
 } from 'lucide-react';
 import { projectsApi, errorMessage } from '../lib/api';
 import { useProject } from '../features/workspace/useProject';
@@ -15,6 +15,7 @@ import { AssistantPanel } from '../features/workspace/AssistantPanel';
 import { PreviewPanel, ProblemsPanel, HistoryPanel, SecurityPanel } from '../features/workspace/SidePanels';
 import { PublishPanel } from '../features/publishing/PublishPanel';
 import { DesignPanel } from '../features/design/DesignPanel';
+import { TestsPanel } from '../features/testing/TestsPanel';
 import { Badge, Button, ErrorState, IconButton, Menu, Select, Spinner, Tabs } from '../components/ui';
 
 const SaveIndicator = ({ state, error, onRetry }) => {
@@ -106,6 +107,21 @@ const WorkspacePage = () => {
       toast.success('Proposal ready — review the diff', { id: pending });
     } catch (e) {
       toast.error(errorMessage(e, 'Could not prepare the change'), { id: pending });
+    }
+  };
+
+  // Sends test failures to the crew's debug flow as a reviewable proposal.
+  const fixWithCrew = async (errorText) => {
+    setSide('assistant');
+    setMobile('assistant');
+    const pending = toast.loading('The crew is diagnosing the test failures…');
+    try {
+      await flush();
+      const res = await projectsApi.debug(id, errorText);
+      setProposal({ ...res.proposal, changes: res.changes, summary: res.generation?.summary, warnings: res.generation?.warnings || [], trace: res.generation?.trace || [] });
+      toast.success('Fix proposed — review the diff, apply, then run the tests again', { id: pending });
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not prepare a fix'), { id: pending });
     }
   };
 
@@ -212,6 +228,7 @@ const WorkspacePage = () => {
     { id: 'preview', label: 'Preview', icon: Eye },
     { id: 'design', label: 'Design', icon: Palette },
     { id: 'problems', label: 'Problems', icon: AlertTriangle, badge: errorsCount ? <Badge tone="danger" className="px-1.5 py-0">{errorsCount}</Badge> : null },
+    { id: 'tests', label: 'Tests', icon: FlaskConical },
     { id: 'history', label: 'History', icon: History },
     { id: 'security', label: 'Security', icon: ShieldCheck },
     { id: 'publish', label: 'Publish', icon: Rocket },
@@ -242,6 +259,8 @@ const WorkspacePage = () => {
             onRequestEdit={requestEdit}
           />
         );
+      case 'tests':
+        return <TestsPanel projectId={id} beforeRun={flush} locked={!!proposal} onFixWithCrew={fixWithCrew} />;
       case 'publish':
         return <PublishPanel project={p.project} files={p.files} beforeAction={flush} />;
       default:
