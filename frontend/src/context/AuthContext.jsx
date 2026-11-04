@@ -12,7 +12,7 @@ export const useAuth = () => {
 };
 
 const toAppUser = (user) =>
-  user ? { id: user.id, email: user.email, name: user.user_metadata?.name || user.email?.split('@')[0] || '' } : null;
+  user ? { id: user.id, email: user.email, name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || '' } : null;
 
 const notConfigured = () => {
   throw new Error('Sign-in is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -52,6 +52,25 @@ export const AuthProvider = ({ children }) => {
     return { user: toAppUser(data.user), needsConfirmation: !data.session };
   };
 
+  // Redirects to Google; Supabase brings the user back to `next` with a session.
+  const loginWithGoogle = async (next = '/dashboard') => {
+    if (!supabase) notConfigured();
+    // Supabase redirects to a raw error page when a provider is off, so check first.
+    const settings = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/settings`, {
+      headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+    })
+      .then((r) => r.json())
+      .catch(() => null);
+    if (settings && !settings.external?.google) throw new Error('Google sign-in isn’t enabled yet. Use email and password for now.');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}${next}` },
+    });
+    if (error) {
+      throw new Error(/not enabled|unsupported provider/i.test(error.message) ? 'Google sign-in isn’t enabled yet. Use email and password for now.' : error.message);
+    }
+  };
+
   const logout = async () => {
     if (supabase) await supabase.auth.signOut();
     setSession(null);
@@ -64,6 +83,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!session,
     login,
     register,
+    loginWithGoogle,
     logout,
   };
 

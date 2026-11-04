@@ -4,6 +4,7 @@ import { MailCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button, Field, Input } from '../components/ui';
 import { AuthCard } from '../features/auth/AuthCard';
+import { GoogleButton, OrDivider } from '../features/auth/GoogleButton';
 
 const RegisterPage = () => {
   const { register } = useAuth();
@@ -66,6 +67,8 @@ const RegisterPage = () => {
         </>
       }
     >
+      <GoogleButton label="Sign up with Google" onError={setError} />
+      <OrDivider />
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && (
           <div role="alert" className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
